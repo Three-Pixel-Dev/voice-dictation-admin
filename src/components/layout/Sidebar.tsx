@@ -4,7 +4,8 @@ import {
   Users, 
   Settings, 
   UserCog,
-  LogOut
+  LogOut,
+  Mic
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -24,6 +25,11 @@ const menuItems = [
     title: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard",
+  },
+  {
+    title: "Voice Notes",
+    icon: Mic,
+    href: "/voice-notes",
   },
   {
     title: "Member Levels",

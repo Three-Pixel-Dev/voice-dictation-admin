@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { MainLayout } from "@/components/layout/MainLayout"
 import { SignIn } from "@/features/auth/pages/SignIn"
 import { Dashboard } from "@/features/dashboard/pages/Dashboard"
+import { VoiceNotes } from "@/features/voice-notes/pages/VoiceNotes"
 import { MemberLevels } from "@/features/member-levels/pages/MemberLevels"
 import { Users } from "@/features/users/pages/Users"
 import { Settings } from "@/features/settings/pages/Settings"
@@ -40,6 +41,18 @@ function App() {
             isAuthenticated ? (
               <MainLayout>
                 <Dashboard />
+              </MainLayout>
+            ) : (
+              <Navigate to="/signin" />
+            )
+          }
+        />
+        <Route
+          path="/voice-notes"
+          element={
+            isAuthenticated ? (
+              <MainLayout>
+                <VoiceNotes />
               </MainLayout>
             ) : (
               <Navigate to="/signin" />

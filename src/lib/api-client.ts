@@ -38,12 +38,15 @@ export const apiClient = {
   },
 
   async post<T>(url: string, data?: any): Promise<T> {
+    const isFormData = data instanceof FormData
     const response = await fetch(`${API_BASE_URL}${url}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: data ? JSON.stringify(data) : undefined,
+      headers: isFormData
+        ? {} // Let browser set Content-Type with boundary for FormData
+        : {
+            "Content-Type": "application/json",
+          },
+      body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
     })
     return handleResponse<T>(response)
   },
