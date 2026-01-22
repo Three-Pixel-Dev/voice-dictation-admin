@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef,useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Mic, MicOff, Square, Sparkles, FileText, Globe, X, Loader2 } from "lucide-react"
+import { Mic, MicOff, Square, Sparkles, FileText, Globe, X, Loader2,ArrowLeft, Clock, Calendar } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { useVoiceTranscription, useJobStatus } from "../hooks/use-voice-transcription"
@@ -16,8 +16,9 @@ import { useVoiceNotes, useVoiceNoteDetails } from "../hooks/use-voice-notes"
 import type { TaskType, SummaryStyle } from "../types/voice-notes.types"
 import type { VoiceNote } from "../types/voice-notes-list.types"
 import { toast } from "sonner"
-
+import { VoiceNoteDetailView } from "../component/VoiceNoteDetailView"
 export function VoiceNotes() {
+  const [view, setView] = useState<"list" | "details">("list")
   const [isRecording, setIsRecording] = useState(false)
   const [isHolding, setIsHolding] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
@@ -43,7 +44,10 @@ export function VoiceNotes() {
     sortDirection: "DESC",
     autoFetch: true,
   })
-  const { data: voiceNoteDetails, loading: loadingDetails } = useVoiceNoteDetails(selectedVoiceNoteId)
+  const { data: voiceNoteDetails, loading: loadingDetails, refetch: refetchDetails} = useVoiceNoteDetails(selectedVoiceNoteId)
+  const selectedNote = useMemo(() => 
+    voiceNotesData?.content?.find((n) => n.id === selectedVoiceNoteId), 
+  [voiceNotesData, selectedVoiceNoteId])
 
   useEffect(() => {
     if (isRecording) {
@@ -222,11 +226,28 @@ export function VoiceNotes() {
       return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined })
     }
   }
-
-  const handleVoiceNoteClick = (voiceNoteId: number) => {
-    setSelectedVoiceNoteId(voiceNoteId)
+  const handleViewDetails = (id: number) => {
+    setSelectedVoiceNoteId(id)
+    setView("details")
   }
-
+  const handleBackToList = () => {
+    setView("list")
+    setSelectedVoiceNoteId(null)
+  }
+  // const handleVoiceNoteClick = (voiceNoteId: number) => {
+  //   setSelectedVoiceNoteId(voiceNoteId)
+  // }
+  if (view === "details") {
+    return (
+      <VoiceNoteDetailView 
+        note={selectedNote}
+        details={voiceNoteDetails}
+        isLoading={loadingDetails}
+        onBack={handleBackToList}
+        onRefresh={refetchDetails}
+      />
+    )
+  }
   return (
     <div className="space-y-6 pb-32">
       <div className="flex items-center justify-between">
@@ -287,7 +308,7 @@ export function VoiceNotes() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleVoiceNoteClick(note.id)}
+                                onClick={() => handleViewDetails(note.id)}
                               >
                                 <FileText className="mr-2 h-4 w-4" />
                                 Transcript
@@ -297,7 +318,7 @@ export function VoiceNotes() {
                               <Button
                                 variant="default"
                                 size="sm"
-                                onClick={() => handleVoiceNoteClick(note.id)}
+                                onClick={() => handleViewDetails(note.id)}
                               >
                                 <Sparkles className="mr-2 h-4 w-4" />
                                 Summary
@@ -308,7 +329,7 @@ export function VoiceNotes() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleVoiceNoteClick(note.id)}
+                            onClick={() => handleViewDetails(note.id)}
                             disabled={isSelected && loadingDetails}
                           >
                             {isSelected && loadingDetails ? (
