@@ -8,10 +8,15 @@ import type {
   VoiceNoteDetailRequest,
   VoiceNoteDetailPageAndFilter,
 } from "../types/voice-notes-list.types"
+import { SummaryStyle,JobInitResponse } from "../types/voice-notes.types"
 
+export interface TextSummaryRequest {
+  voiceNoteDetailId: number
+  style: SummaryStyle
+}
 const BASE_URL = "/api/voice-notes"
 const DETAILS_BASE_URL = "/api/voice-notes-details"
-
+const BASE_URL_FOR_VOICE = "/api/voice"
 // Voice Notes Services
 export const voiceNotesService = {
   getAll: async (params?: VoiceNotePageAndFilter): Promise<PaginationDTO<VoiceNote>> => {
@@ -39,6 +44,13 @@ export const voiceNotesService = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete<ApiResponse<void>>(`${BASE_URL}/${id}`)
+  },
+  summarizeText: async (data: TextSummaryRequest): Promise<JobInitResponse> => {
+    const response = await apiClient.post<ApiResponse<JobInitResponse>>(
+      `${BASE_URL_FOR_VOICE}/summarize-text`,
+      data
+    )
+    return response.data
   },
 }
 

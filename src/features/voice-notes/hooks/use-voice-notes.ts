@@ -10,7 +10,7 @@ import type {
   VoiceNoteDetailRequest,
   VoiceNoteDetailPageAndFilter,
 } from "../types/voice-notes-list.types"
-
+import { JobInitResponse } from "../types/voice-notes.types"
 interface UseVoiceNotesOptions {
   page?: number
   size?: number
@@ -229,4 +229,37 @@ export function useCreateVoiceNoteDetail() {
   )
 
   return { create, loading, error }
+}
+
+export function useSummarizeText() {
+  const [loading, setLoading] = useState<boolean>(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  const summarize = useCallback(
+    async (voiceNoteDetailId: number, style: any): Promise<JobInitResponse | null> => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        // Call the service we just updated
+        const result = await voiceNotesService.summarizeText({ 
+          voiceNoteDetailId, 
+          style 
+        })
+        
+        toast.info("Summarization started...")
+        return result
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error("Failed to start summarization")
+        setError(error)
+        toast.error(error.message)
+        return null
+      } finally {
+        setLoading(false)
+      }
+    },
+    []
+  )
+
+  return { summarize, loading, error }
 }
