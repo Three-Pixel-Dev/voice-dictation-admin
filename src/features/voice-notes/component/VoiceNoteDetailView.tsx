@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback,useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -65,6 +65,11 @@ export function VoiceNoteDetailView({ note, details, isLoading, onBack, onRefres
         ? convertSupabaseUrl(note.voiceNoteUrl) 
         : note.voiceNoteUrl)
     : null
+
+  const sortedDetails = useMemo(() => {
+    if (!details) return []
+    return [...details].sort((a, b) => b.id - a.id)
+  }, [details])
 
   // Audio playback controls
   useEffect(() => {
@@ -318,9 +323,9 @@ export function VoiceNoteDetailView({ note, details, isLoading, onBack, onRefres
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
             <p className="text-muted-foreground">Loading history...</p>
           </div>
-        ) : details && details.length > 0 ? (
+        ) : sortedDetails.length > 0 ? (
           <div className="space-y-6">
-            {details.map((detail) => (
+            {sortedDetails.map((detail) => (
               <DetailItem 
                 key={detail.id} 
                 detail={detail} 
