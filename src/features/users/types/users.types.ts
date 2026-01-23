@@ -4,6 +4,7 @@ export interface User {
   id: number
   email: string
   profileId?: number
+  name?: string
   masterData?: MasterData
 }
 
