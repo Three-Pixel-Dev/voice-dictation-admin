@@ -1,5 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { authService } from "@/features/auth/services/auth.service"
+import { profileService } from "@/features/profile/services/profile.service"
+import { useState, useEffect } from "react"
 import { 
   LayoutDashboard, 
   Users, 
@@ -58,6 +60,25 @@ const menuItems = [
 export function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
+  const [profileName, setProfileName] = useState("")
+  const [email, setEmail] = useState("")
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const user = authService.getUser()
+      if (!user?.userId) return
+
+      try {
+        const profile = await profileService.getByUserId(user.userId)
+        setProfileName(profile.name || "")
+        setEmail(user.email || "")
+      } catch (error) {
+        console.error("Failed to load profile:", error)
+      }
+    }
+
+    loadProfile()
+  }, [])
 
   const handleLogout = () => {
     authService.logout()
@@ -101,12 +122,12 @@ export function Sidebar() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start gap-3">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="" alt="Admin" />
-                <AvatarFallback>AD</AvatarFallback>
+                <AvatarImage src="" alt={profileName} />
+                <AvatarFallback>{profileName.slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col items-start">
-                <span className="text-sm font-medium">Admin User</span>
-                <span className="text-xs text-muted-foreground">admin@example.com</span>
+                <span className="text-sm font-medium">{profileName}</span>
+                <span className="text-xs text-muted-foreground">{email}</span>
               </div>
             </Button>
           </DropdownMenuTrigger>
