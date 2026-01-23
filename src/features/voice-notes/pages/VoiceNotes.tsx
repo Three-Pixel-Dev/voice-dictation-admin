@@ -60,7 +60,7 @@ export function VoiceNotes() {
   const { data: voiceNotesData, loading: loadingVoiceNotes, refetch: refetchVoiceNotes } = useVoiceNotes({
     page,
     size,
-    sortBy: "id",
+    sortBy: "createdAt",
     sortDirection: "DESC",
     autoFetch: true,
   })
