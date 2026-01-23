@@ -24,17 +24,8 @@ export const voiceService = {
       formData.append("style", style)
     }
 
-    const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || "http://localhost:8080"}${BASE_URL}`, {
-      method: "POST",
-      body: formData,
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.error || response.statusText)
-    }
-
-    return response.json()
+    // Use apiClient to include JWT token
+    return apiClient.post<JobInitResponse>(BASE_URL, formData)
   },
 
   /**

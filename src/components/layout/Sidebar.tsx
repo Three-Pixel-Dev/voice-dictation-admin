@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
+import { authService } from "@/features/auth/services/auth.service"
 import { 
   LayoutDashboard, 
   Users, 
@@ -59,7 +60,7 @@ export function Sidebar() {
   const navigate = useNavigate()
 
   const handleLogout = () => {
-    // TODO: Implement logout logic
+    authService.logout()
     navigate("/signin")
   }
 

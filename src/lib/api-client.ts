@@ -12,8 +12,28 @@ export class ApiError extends Error {
   }
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem("token")
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  }
+  
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
+  
+  return headers
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
+    // Handle 401 Unauthorized - token expired or invalid
+    if (response.status === 401) {
+      localStorage.removeItem("token")
+      localStorage.removeItem("user")
+      window.location.href = "/signin"
+    }
+    
     const errorData = await response.json().catch(() => ({}))
     throw new ApiError(
       response.status,
@@ -30,22 +50,29 @@ export const apiClient = {
   async get<T>(url: string): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${url}`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
     })
     return handleResponse<T>(response)
   },
 
   async post<T>(url: string, data?: any): Promise<T> {
     const isFormData = data instanceof FormData
+    const token = localStorage.getItem("token")
+    
+    // For FormData, we need to manually set Authorization header
+    // The browser will set Content-Type with boundary automatically
+    const headers: Record<string, string> = isFormData
+      ? {} // Let browser set Content-Type with boundary for FormData
+      : getAuthHeaders()
+    
+    // Add Authorization header for FormData requests
+    if (isFormData && token) {
+      headers["Authorization"] = `Bearer ${token}`
+    }
+    
     const response = await fetch(`${API_BASE_URL}${url}`, {
       method: "POST",
-      headers: isFormData
-        ? {} // Let browser set Content-Type with boundary for FormData
-        : {
-            "Content-Type": "application/json",
-          },
+      headers,
       body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
     })
     return handleResponse<T>(response)
@@ -54,9 +81,7 @@ export const apiClient = {
   async put<T>(url: string, data?: any): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${url}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
       body: data ? JSON.stringify(data) : undefined,
     })
     return handleResponse<T>(response)
@@ -65,9 +90,7 @@ export const apiClient = {
   async delete<T>(url: string): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${url}`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
     })
     return handleResponse<T>(response)
   },

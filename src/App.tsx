@@ -10,11 +10,11 @@ import { MemberLevels } from "@/features/member-levels/pages/MemberLevels"
 import { MemberLevelCodes } from "@/features/member-levels/pages/MemberLevelCodes"
 import { Users } from "@/features/users/pages/Users"
 import { Settings } from "@/features/settings/pages/Settings"
+import { authService } from "@/features/auth/services/auth.service"
 import "./App.css"
 
 function App() {
-  // TODO: Add authentication check
-  const isAuthenticated = true // Replace with actual auth check
+  const isAuthenticated = authService.isAuthenticated()
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="voice-dictation-theme">
