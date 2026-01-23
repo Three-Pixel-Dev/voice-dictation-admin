@@ -14,6 +14,8 @@ export interface LoginResponse {
 
 const AUTH_BASE_URL = "/api/auth"
 
+let logoutCallback: (() => void) | null = null
+
 export const authService = {
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await apiClient.post<ApiResponse<LoginResponse>>(
@@ -26,6 +28,8 @@ export const authService = {
   logout(): void {
     localStorage.removeItem("token")
     localStorage.removeItem("user")
+    // Dispatch custom event for logout
+    window.dispatchEvent(new Event("auth-logout"))
   },
 
   getToken(): string | null {
@@ -52,5 +56,9 @@ export const authService = {
 
   isAuthenticated(): boolean {
     return !!this.getToken()
+  },
+
+  setLogoutCallback(callback: (() => void) | null): void {
+    logoutCallback = callback
   },
 }

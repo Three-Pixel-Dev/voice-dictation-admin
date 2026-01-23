@@ -18,10 +18,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Loader2, ChevronLeft, ChevronRight, Edit, Trash2, MoreVertical } from "lucide-react"
 import { useMemberLevelsCode } from "../hooks/use-member-levels-code"
 import { useMemberLevels } from "../hooks/use-member-levels"
-import type { MemberLevelCodeFilter } from "../types/member-levels-code.types"
+import { memberLevelsCodeService } from "../services/member-levels-code.service"
+import type { MemberLevelCodeFilter, MemberLevelCode, MemberLevelCodeRequest } from "../types/member-levels-code.types"
 import { toast } from "sonner"
 
 export function MemberLevelCodes() {
@@ -29,6 +54,17 @@ export function MemberLevelCodes() {
   const [size] = useState(10)
   const [filter, setFilter] = useState<MemberLevelCodeFilter>({})
   const [codeSearch, setCodeSearch] = useState("")
+  const [editingCode, setEditingCode] = useState<MemberLevelCode | null>(null)
+  const [deletingCode, setDeletingCode] = useState<MemberLevelCode | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [editFormData, setEditFormData] = useState<Partial<MemberLevelCodeRequest>>({
+    code: "",
+    activatedAt: "",
+    expiredAt: "",
+  })
 
   const { data, loading, error, refetch } = useMemberLevelsCode({
     page,
@@ -80,6 +116,55 @@ export function MemberLevelCodes() {
       return new Date(dateString).toLocaleDateString()
     } catch {
       return dateString
+    }
+  }
+
+  const handleEditClick = (code: MemberLevelCode) => {
+    setEditingCode(code)
+    setEditFormData({
+      code: code.code,
+      activatedAt: code.activatedAt || "",
+      expiredAt: code.expiredAt || "",
+      memberLevelId: code.memberLevelId,
+      userId: 1, // This will need to be updated based on current user context
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const handleUpdate = async () => {
+    if (!editingCode || !editFormData) return
+    try {
+      setIsUpdating(true)
+      await memberLevelsCodeService.update(editingCode.id, editFormData as MemberLevelCodeRequest)
+      toast.success("Member level code updated successfully")
+      setIsEditDialogOpen(false)
+      setEditingCode(null)
+      refetch()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update member level code")
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleDeleteClick = (code: MemberLevelCode) => {
+    setDeletingCode(code)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!deletingCode) return
+    try {
+      setIsDeleting(true)
+      await memberLevelsCodeService.delete(deletingCode.id)
+      toast.success("Member level code deleted successfully")
+      setIsDeleteDialogOpen(false)
+      setDeletingCode(null)
+      refetch()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete member level code")
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -186,6 +271,7 @@ export function MemberLevelCodes() {
                     <TableHead>Expired At</TableHead>
                     <TableHead>Created User Name</TableHead>
                     <TableHead>Created At</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -206,11 +292,33 @@ export function MemberLevelCodes() {
                         <TableCell>
                           {formatDate(code.masterData?.createdAt)}
                         </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditClick(code)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteClick(code)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         No member level codes found
                       </TableCell>
                     </TableRow>
@@ -250,6 +358,109 @@ export function MemberLevelCodes() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Member Level Code</DialogTitle>
+            <DialogDescription>
+              Update the details of this member level code
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="memberLevel">Member Level</Label>
+              <Select
+                value={editFormData.memberLevelId?.toString() || ""}
+                onValueChange={(value) =>
+                  setEditFormData({ ...editFormData, memberLevelId: parseInt(value) })
+                }
+              >
+                <SelectTrigger id="memberLevel">
+                  <SelectValue placeholder="Select a member level" />
+                </SelectTrigger>
+                <SelectContent>
+                  {memberLevelsData?.content?.map((level) => (
+                    <SelectItem key={level.id} value={level.id.toString()}>
+                      {level.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="code">Code</Label>
+              <Input
+                id="code"
+                value={editFormData.code || ""}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, code: e.target.value })
+                }
+                placeholder="Enter code"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="activatedAt">Activated At</Label>
+              <Input
+                id="activatedAt"
+                type="datetime-local"
+                value={editFormData.activatedAt || ""}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, activatedAt: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="expiredAt">Expired At</Label>
+              <Input
+                id="expiredAt"
+                type="datetime-local"
+                value={editFormData.expiredAt || ""}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, expiredAt: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleUpdate} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Update
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Member Level Code?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the code "{deletingCode?.code}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

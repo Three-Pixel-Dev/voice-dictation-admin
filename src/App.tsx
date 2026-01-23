@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { useEffect, useState } from "react"
 import { ThemeProvider } from "@/lib/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { MainLayout } from "@/components/layout/MainLayout"
@@ -14,7 +15,23 @@ import { authService } from "@/features/auth/services/auth.service"
 import "./App.css"
 
 function App() {
-  const isAuthenticated = authService.isAuthenticated()
+  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated())
+
+  useEffect(() => {
+    const checkAuthStatus = () => {
+      setIsAuthenticated(authService.isAuthenticated())
+    }
+
+    // Listen for logout event
+    window.addEventListener("auth-logout", checkAuthStatus)
+    // Check auth status on storage change (handles logout from other tabs)
+    window.addEventListener("storage", checkAuthStatus)
+    
+    return () => {
+      window.removeEventListener("auth-logout", checkAuthStatus)
+      window.removeEventListener("storage", checkAuthStatus)
+    }
+  }, [])
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="voice-dictation-theme">

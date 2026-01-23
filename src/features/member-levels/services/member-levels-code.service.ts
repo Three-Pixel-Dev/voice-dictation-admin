@@ -45,6 +45,24 @@ export const memberLevelsCodeService = {
     )
     return response.data
   },
+
+  /**
+   * Update a member level code
+   */
+  async update(id: number, data: MemberLevelCodeRequest): Promise<MemberLevelCode> {
+    const response = await apiClient.put<ApiResponse<MemberLevelCode>>(
+      `${BASE_URL}/${id}`,
+      data
+    )
+    return response.data
+  },
+
+  /**
+   * Delete a member level code
+   */
+  async delete(id: number): Promise<void> {
+    await apiClient.delete(`${BASE_URL}/${id}`)
+  },
 }
 
 /**
