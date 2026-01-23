@@ -50,7 +50,7 @@ export const voiceNotesService = {
       `${BASE_URL_FOR_VOICE}/summarize-text`,
       data
     )
-    return response.data
+    return response as any;
   },
 }
 
