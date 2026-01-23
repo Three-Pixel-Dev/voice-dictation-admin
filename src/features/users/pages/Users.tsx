@@ -124,7 +124,7 @@ export function Users() {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Profile ID</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -145,7 +145,7 @@ export function Users() {
                         </div>
                       </TableCell>
                       <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.profileId ?? "-"}</TableCell>
+                      <TableCell>{user.name ?? "-"}</TableCell>
                       <TableCell>
                         {formatDate(user.masterData?.createdAt)}
                       </TableCell>

@@ -14,9 +14,9 @@ import type { Profile } from "@/features/profile/services/profile.service"
 
 export function Settings() {
   const [profileData, setProfileData] = useState({
-    name: "Admin User",
-    email: "admin@example.com",
-    phone: "+1 (555) 123-4567",
+    name: "",
+    email: "",
+    phone: "",
   })
 
   const [passwordData, setPasswordData] = useState({
@@ -46,6 +46,13 @@ export function Settings() {
         setLoadingProfile(true)
         const profileData = await profileService.getByUserId(user.userId)
         setProfile(profileData)
+        
+        // Auto-fill profile form data
+        setProfileData({
+          name: profileData.name || "",
+          email: user.email || "",
+          phone: "", // Phone number is blank
+        })
         
         // Auto-select based on useDefaultApiKey
         if (profileData.useDefaultApiKey === false) {
