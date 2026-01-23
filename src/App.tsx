@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { useEffect, useState } from "react"
 import { ThemeProvider } from "@/lib/theme-provider"
+import { SidebarProvider } from "@/lib/sidebar-context"
 import { Toaster } from "@/components/ui/sonner"
 import { MainLayout } from "@/components/layout/MainLayout"
 import { SignIn } from "@/features/auth/pages/SignIn"
@@ -35,8 +36,9 @@ function App() {
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="voice-dictation-theme">
-      <Toaster />
-      <BrowserRouter>
+      <SidebarProvider>
+        <Toaster />
+        <BrowserRouter>
       <Routes>
         <Route
           path="/signin"
@@ -139,7 +141,8 @@ function App() {
           }
         />
       </Routes>
-    </BrowserRouter>
+        </BrowserRouter>
+      </SidebarProvider>
     </ThemeProvider>
   )
 }
