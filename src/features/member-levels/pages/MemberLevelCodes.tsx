@@ -184,7 +184,7 @@ export function MemberLevelCodes() {
                     <TableHead>Member Level</TableHead>
                     <TableHead>Activated At</TableHead>
                     <TableHead>Expired At</TableHead>
-                    <TableHead>User ID</TableHead>
+                    <TableHead>Created User Name</TableHead>
                     <TableHead>Created At</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -202,7 +202,7 @@ export function MemberLevelCodes() {
                         </TableCell>
                         <TableCell>{formatDate(code.activatedAt)}</TableCell>
                         <TableCell>{formatDate(code.expiredAt)}</TableCell>
-                        <TableCell>{code.userId}</TableCell>
+                        <TableCell>{code.createdUserName || "-"}</TableCell>
                         <TableCell>
                           {formatDate(code.masterData?.createdAt)}
                         </TableCell>
