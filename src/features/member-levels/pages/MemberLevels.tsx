@@ -57,6 +57,7 @@ export function MemberLevels() {
   const [generatedCodes, setGeneratedCodes] = useState<string>("")
   const [isGeneratingCodes, setIsGeneratingCodes] = useState(false)
   const [isSavingCodes, setIsSavingCodes] = useState(false)
+  const [codeValidationErrors, setCodeValidationErrors] = useState<Map<string, string>>(new Map())
   
   const [formData, setFormData] = useState<MemberLevelRequest>({
     name: "",
@@ -131,6 +132,8 @@ export function MemberLevels() {
     }
 
     setIsSavingCodes(true)
+    setCodeValidationErrors(new Map())
+    
     try {
       const codeLines = generatedCodes
         .split("\n")
@@ -143,23 +146,42 @@ export function MemberLevels() {
         return
       }
 
-      // Save each code
-      // Note: You may need to get the current user ID from auth context
-      // For now, using a placeholder - update this based on your auth implementation
+      // Save each code individually and track errors
       const userId = 1 // TODO: Get from auth context
+      const errors = new Map<string, string>()
+      let successCount = 0
 
-      const savePromises = codeLines.map(code =>
-        memberLevelsCodeService.create({
-          code,
-          memberLevelId: codeGenerationLevel.id,
-          userId: userId,
-        })
-      )
+      for (const code of codeLines) {
+        try {
+          await memberLevelsCodeService.create({
+            code,
+            memberLevelId: codeGenerationLevel.id,
+            userId: userId,
+          })
+          successCount++
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : "Failed to save code"
+          errors.set(code, errorMessage)
+        }
+      }
 
-      await Promise.all(savePromises)
-      toast.success(`Successfully saved ${codeLines.length} code(s)`)
-      setCodeGenerationLevel(null)
-      setGeneratedCodes("")
+      setCodeValidationErrors(errors)
+
+      if (errors.size > 0) {
+        // Keep only failed codes in textarea for user to fix
+        const failedCodes = Array.from(errors.keys()).join("\n")
+        setGeneratedCodes(failedCodes)
+        
+        if (successCount > 0) {
+          toast.success(`${successCount} code(s) saved. ${errors.size} code(s) failed.`)
+        } else {
+          toast.error(`Failed to save codes. See details below.`)
+        }
+      } else {
+        toast.success(`Successfully saved ${successCount} code(s)`)
+        setCodeGenerationLevel(null)
+        setGeneratedCodes("")
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save codes")
     } finally {
@@ -456,12 +478,24 @@ export function MemberLevels() {
                 onChange={(e) => setGeneratedCodes(e.target.value)}
                 placeholder="Codes will appear here, one per line..."
                 rows={10}
-                className="font-mono text-sm"
+                className={`font-mono text-sm ${codeValidationErrors.size > 0 ? "border-destructive" : ""}`}
                 disabled={isSavingCodes}
               />
-              <p className="text-xs text-muted-foreground">
-                {generatedCodes.split("\n").filter(line => line.trim()).length} code(s) ready to save
-              </p>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  {generatedCodes.split("\n").filter(line => line.trim()).length} code(s) ready to save
+                </p>
+                {codeValidationErrors.size > 0 && (
+                  <div className="bg-destructive/10 border border-destructive/30 rounded p-3 space-y-1">
+                    <p className="text-xs font-semibold text-destructive">Validation Errors:</p>
+                    {Array.from(codeValidationErrors.entries()).map(([code, error]) => (
+                      <p key={code} className="text-xs text-destructive">
+                        <span className="font-mono">{code}</span>: {error}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <DialogFooter>
