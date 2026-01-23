@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Edit, Trash2, Loader2 } from "lucide-react"
+import { Plus, Edit, Trash2, Loader2, MoreVertical, Sparkles } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +38,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useMemberLevels, useCreateMemberLevel, useUpdateMemberLevel, useDeleteMemberLevel } from "../hooks/use-member-levels"
 import type { MemberLevel, MemberLevelRequest } from "../types/member-levels.types"
+import { memberLevelsCodeService, generateMultipleCodes } from "../services/member-levels-code.service"
+import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 
 export function MemberLevels() {
@@ -51,6 +53,10 @@ export function MemberLevels() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingLevel, setEditingLevel] = useState<MemberLevel | null>(null)
   const [deletingLevel, setDeletingLevel] = useState<MemberLevel | null>(null)
+  const [codeGenerationLevel, setCodeGenerationLevel] = useState<MemberLevel | null>(null)
+  const [generatedCodes, setGeneratedCodes] = useState<string>("")
+  const [isGeneratingCodes, setIsGeneratingCodes] = useState(false)
+  const [isSavingCodes, setIsSavingCodes] = useState(false)
   
   const [formData, setFormData] = useState<MemberLevelRequest>({
     name: "",
@@ -101,6 +107,63 @@ export function MemberLevels() {
       refetch()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete member level")
+    }
+  }
+
+  const handleGenerateCode = (level: MemberLevel) => {
+    setCodeGenerationLevel(level)
+    // Auto-generate 5 codes by default
+    const codes = generateMultipleCodes(5, 12)
+    setGeneratedCodes(codes)
+  }
+
+  const handleRegenerateCodes = () => {
+    const codeCount = generatedCodes.split("\n").filter(line => line.trim()).length || 5
+    const codes = generateMultipleCodes(codeCount, 12)
+    setGeneratedCodes(codes)
+    toast.success("Codes regenerated")
+  }
+
+  const handleSaveCodes = async () => {
+    if (!codeGenerationLevel || !generatedCodes.trim()) {
+      toast.error("Please generate at least one code")
+      return
+    }
+
+    setIsSavingCodes(true)
+    try {
+      const codeLines = generatedCodes
+        .split("\n")
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+
+      if (codeLines.length === 0) {
+        toast.error("No valid codes to save")
+        setIsSavingCodes(false)
+        return
+      }
+
+      // Save each code
+      // Note: You may need to get the current user ID from auth context
+      // For now, using a placeholder - update this based on your auth implementation
+      const userId = 1 // TODO: Get from auth context
+
+      const savePromises = codeLines.map(code =>
+        memberLevelsCodeService.create({
+          code,
+          memberLevelId: codeGenerationLevel.id,
+          userId: userId,
+        })
+      )
+
+      await Promise.all(savePromises)
+      toast.success(`Successfully saved ${codeLines.length} code(s)`)
+      setCodeGenerationLevel(null)
+      setGeneratedCodes("")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save codes")
+    } finally {
+      setIsSavingCodes(false)
     }
   }
 
@@ -166,10 +229,14 @@ export function MemberLevels() {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
-                              <Edit className="h-4 w-4" />
+                              <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleGenerateCode(level)}>
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              Generate Code
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEdit(level)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
@@ -352,6 +419,72 @@ export function MemberLevels() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Code Generation Dialog */}
+      <Dialog open={!!codeGenerationLevel} onOpenChange={(open) => !open && setCodeGenerationLevel(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Generate Code for {codeGenerationLevel?.name}</DialogTitle>
+            <DialogDescription>
+              Codes will be auto-generated. You can edit them before saving.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="codes">Generated Codes (one per line)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRegenerateCodes}
+                  disabled={isGeneratingCodes || isSavingCodes}
+                >
+                  {isGeneratingCodes ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    "Regenerate All"
+                  )}
+                </Button>
+              </div>
+              <Textarea
+                id="codes"
+                value={generatedCodes}
+                onChange={(e) => setGeneratedCodes(e.target.value)}
+                placeholder="Codes will appear here, one per line..."
+                rows={10}
+                className="font-mono text-sm"
+                disabled={isSavingCodes}
+              />
+              <p className="text-xs text-muted-foreground">
+                {generatedCodes.split("\n").filter(line => line.trim()).length} code(s) ready to save
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCodeGenerationLevel(null)
+                setGeneratedCodes("")
+              }}
+              disabled={isSavingCodes}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveCodes}
+              disabled={isSavingCodes || !generatedCodes.trim()}
+            >
+              {isSavingCodes && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Codes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

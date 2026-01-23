@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef,useMemo } from "react"
+import { useState, useEffect, useRef } from "react"
+import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -8,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Mic, MicOff, Square, Sparkles, FileText, Globe, X, Loader2,ArrowLeft, Clock, Calendar } from "lucide-react"
+import { Mic, MicOff, Square, Sparkles, FileText, Globe, X, Loader2,ArrowLeft, Clock, Calendar, Play, Pause, Volume2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { useVoiceTranscription, useJobStatus } from "../hooks/use-voice-transcription"
@@ -16,9 +17,20 @@ import { useVoiceNotes, useVoiceNoteDetails } from "../hooks/use-voice-notes"
 import type { TaskType, SummaryStyle } from "../types/voice-notes.types"
 import type { VoiceNote } from "../types/voice-notes-list.types"
 import { toast } from "sonner"
-import { VoiceNoteDetailView } from "../component/VoiceNoteDetailView"
+
+// Utility function to convert supabase:// URL to public URL
+const convertSupabaseUrl = (internalUrl: string): string => {
+  const PROJECT_ID = process.env.REACT_APP_SUPABASE_PROJECT_ID || ""
+  if (!PROJECT_ID) {
+    console.warn("REACT_APP_SUPABASE_PROJECT_ID is not set in environment variables")
+    return internalUrl
+  }
+  const cleanPath = internalUrl.replace("supabase://", "")
+  return `https://${PROJECT_ID}.supabase.co/storage/v1/object/public/${cleanPath}`
+}
+
 export function VoiceNotes() {
-  const [view, setView] = useState<"list" | "details">("list")
+  const navigate = useNavigate()
   const [isRecording, setIsRecording] = useState(false)
   const [isHolding, setIsHolding] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
@@ -27,13 +39,21 @@ export function VoiceNotes() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [processingJobId, setProcessingJobId] = useState<string | null>(null)
-  const [selectedVoiceNoteId, setSelectedVoiceNoteId] = useState<number | null>(null)
   const [page, setPage] = useState(0)
   const [size] = useState(10)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [playingNoteId, setPlayingNoteId] = useState<number | null>(null)
+  const [noteCurrentTimes, setNoteCurrentTimes] = useState<Map<number, number>>(new Map())
+  const [noteDurations, setNoteDurations] = useState<Map<number, number>>(new Map())
   
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioRefsMap = useRef<Map<number, HTMLAudioElement>>(new Map())
 
   const { uploadAudio, loading: uploading, error: uploadError, jobId } = useVoiceTranscription()
   const { status: jobStatus, loading: checkingStatus, checkStatus } = useJobStatus(processingJobId)
@@ -44,10 +64,6 @@ export function VoiceNotes() {
     sortDirection: "DESC",
     autoFetch: true,
   })
-  const { data: voiceNoteDetails, loading: loadingDetails, refetch: refetchDetails} = useVoiceNoteDetails(selectedVoiceNoteId)
-  const selectedNote = useMemo(() => 
-    voiceNotesData?.content?.find((n) => n.id === selectedVoiceNoteId), 
-  [voiceNotesData, selectedVoiceNoteId])
 
   useEffect(() => {
     if (isRecording) {
@@ -114,6 +130,78 @@ export function VoiceNotes() {
       setProcessingJobId(null)
     }
   }, [jobStatus, refetchVoiceNotes])
+
+  // Create audio URL when audioBlob changes
+  useEffect(() => {
+    if (audioBlob) {
+      const url = URL.createObjectURL(audioBlob)
+      setAudioUrl(url)
+      return () => {
+        URL.revokeObjectURL(url)
+      }
+    } else {
+      setAudioUrl((prevUrl) => {
+        if (prevUrl) {
+          URL.revokeObjectURL(prevUrl)
+        }
+        return null
+      })
+    }
+  }, [audioBlob])
+
+  // Audio playback controls
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio || !audioUrl) return
+
+    const updateTime = () => setCurrentTime(audio.currentTime)
+    const updateDuration = () => {
+      if (audio.duration && isFinite(audio.duration)) {
+        setDuration(audio.duration)
+      }
+    }
+    const handleEnded = () => {
+      setIsPlaying(false)
+      setCurrentTime(0)
+    }
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => setIsPlaying(false)
+    const handleLoadedData = () => {
+      if (audio.duration && isFinite(audio.duration)) {
+        setDuration(audio.duration)
+      }
+    }
+
+    // Load audio metadata
+    audio.load()
+
+    audio.addEventListener("timeupdate", updateTime)
+    audio.addEventListener("loadedmetadata", updateDuration)
+    audio.addEventListener("loadeddata", handleLoadedData)
+    audio.addEventListener("canplay", updateDuration)
+    audio.addEventListener("ended", handleEnded)
+    audio.addEventListener("play", handlePlay)
+    audio.addEventListener("pause", handlePause)
+
+    return () => {
+      audio.removeEventListener("timeupdate", updateTime)
+      audio.removeEventListener("loadedmetadata", updateDuration)
+      audio.removeEventListener("loadeddata", handleLoadedData)
+      audio.removeEventListener("canplay", updateDuration)
+      audio.removeEventListener("ended", handleEnded)
+      audio.removeEventListener("play", handlePlay)
+      audio.removeEventListener("pause", handlePause)
+    }
+  }, [audioUrl])
+
+  // Reset audio when dialog opens
+  useEffect(() => {
+    if (showOptions && audioRef.current) {
+      audioRef.current.currentTime = 0
+      setCurrentTime(0)
+      setIsPlaying(false)
+    }
+  }, [showOptions])
 
   const startRecording = async () => {
     try {
@@ -190,12 +278,40 @@ export function VoiceNotes() {
       const response = await uploadAudio(file, taskType, style)
       setProcessingJobId(response.jobId)
       setShowOptions(false)
+      // Stop audio if playing
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.currentTime = 0
+      }
+      setIsPlaying(false)
       setAudioBlob(null)
       setRecordingTime(0)
       toast.success("Recording uploaded. Processing...")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to upload recording")
     }
+  }
+
+  const togglePlayback = async () => {
+    if (!audioRef.current) return
+
+    try {
+      if (isPlaying) {
+        audioRef.current.pause()
+      } else {
+        await audioRef.current.play()
+      }
+    } catch (error) {
+      console.error("Error playing audio:", error)
+      toast.error("Failed to play audio. Please try again.")
+    }
+  }
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!audioRef.current) return
+    const newTime = parseFloat(e.target.value)
+    audioRef.current.currentTime = newTime
+    setCurrentTime(newTime)
   }
 
   const formatTime = (seconds: number) => {
@@ -227,27 +343,103 @@ export function VoiceNotes() {
     }
   }
   const handleViewDetails = (id: number) => {
-    setSelectedVoiceNoteId(id)
-    setView("details")
+    navigate(`/voice-notes/${id}`)
   }
-  const handleBackToList = () => {
-    setView("list")
-    setSelectedVoiceNoteId(null)
+
+  const toggleNotePlayback = async (noteId: number, audioUrl: string) => {
+    const audio = audioRefsMap.current.get(noteId)
+    if (!audio) return
+
+    // Stop any currently playing audio
+    if (playingNoteId && playingNoteId !== noteId) {
+      const currentAudio = audioRefsMap.current.get(playingNoteId)
+      if (currentAudio) {
+        currentAudio.pause()
+        currentAudio.currentTime = 0
+      }
+    }
+
+    try {
+      if (playingNoteId === noteId && !audio.paused) {
+        audio.pause()
+        setPlayingNoteId(null)
+      } else {
+        await audio.play()
+        setPlayingNoteId(noteId)
+      }
+    } catch (error) {
+      console.error("Error playing audio:", error)
+      toast.error("Failed to play audio. Please try again.")
+    }
   }
-  // const handleVoiceNoteClick = (voiceNoteId: number) => {
-  //   setSelectedVoiceNoteId(voiceNoteId)
-  // }
-  if (view === "details") {
-    return (
-      <VoiceNoteDetailView 
-        note={selectedNote}
-        details={voiceNoteDetails}
-        isLoading={loadingDetails}
-        onBack={handleBackToList}
-        onRefresh={refetchDetails}
-      />
-    )
+
+  const handleAudioEnded = (noteId: number) => {
+    setPlayingNoteId(null)
+    setNoteCurrentTimes(prev => {
+      const newMap = new Map(prev)
+      newMap.set(noteId, 0)
+      return newMap
+    })
   }
+
+  const handleNoteSeek = (noteId: number, newTime: number) => {
+    const audio = audioRefsMap.current.get(noteId)
+    if (!audio) return
+    audio.currentTime = newTime
+    setNoteCurrentTimes(prev => {
+      const newMap = new Map(prev)
+      newMap.set(noteId, newTime)
+      return newMap
+    })
+  }
+
+  // Set up audio event listeners for each note
+  useEffect(() => {
+    const audioElements = audioRefsMap.current
+    const updateHandlers = new Map<number, () => void>()
+    const durationHandlers = new Map<number, () => void>()
+
+    audioElements.forEach((audio, noteId) => {
+      const updateTime = () => {
+        setNoteCurrentTimes(prev => {
+          const newMap = new Map(prev)
+          newMap.set(noteId, audio.currentTime)
+          return newMap
+        })
+      }
+
+      const updateDuration = () => {
+        if (audio.duration && isFinite(audio.duration)) {
+          setNoteDurations(prev => {
+            const newMap = new Map(prev)
+            newMap.set(noteId, audio.duration)
+            return newMap
+          })
+        }
+      }
+
+      audio.addEventListener("timeupdate", updateTime)
+      audio.addEventListener("loadedmetadata", updateDuration)
+      audio.addEventListener("canplay", updateDuration)
+      audio.load()
+
+      updateHandlers.set(noteId, updateTime)
+      durationHandlers.set(noteId, updateDuration)
+    })
+
+    return () => {
+      audioElements.forEach((audio, noteId) => {
+        const updateTime = updateHandlers.get(noteId)
+        const updateDuration = durationHandlers.get(noteId)
+        if (updateTime) audio.removeEventListener("timeupdate", updateTime)
+        if (updateDuration) {
+          audio.removeEventListener("loadedmetadata", updateDuration)
+          audio.removeEventListener("canplay", updateDuration)
+        }
+      })
+    }
+  }, [voiceNotesData?.content])
+  
   return (
     <div className="space-y-6 pb-32">
       <div className="flex items-center justify-between">
@@ -281,12 +473,13 @@ export function VoiceNotes() {
           </div>
         ) : voiceNotesData?.content && voiceNotesData.content.length > 0 ? (
           voiceNotesData.content.map((note: VoiceNote) => {
-            const isSelected = selectedVoiceNoteId === note.id
-            const noteDetails = isSelected ? voiceNoteDetails : null
-            const hasSummary = noteDetails?.some((d) => d.type === "SUMMARIZED") ?? false
-            const hasTranscript = noteDetails?.some((d) => d.type === "TRANSCRIBED") ?? false
-            const showDetails = isSelected && noteDetails && noteDetails.length > 0
-            
+            const noteAudioUrl = note.voiceNoteUrl 
+              ? (note.voiceNoteUrl.startsWith("supabase://") 
+                  ? convertSupabaseUrl(note.voiceNoteUrl) 
+                  : note.voiceNoteUrl)
+              : null
+            const isNotePlaying = playingNoteId === note.id
+
             return (
               <Card key={note.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
@@ -301,75 +494,70 @@ export function VoiceNotes() {
                         </Badge>
                       </div>
                       <p className="text-sm font-medium mb-3">{note.title}</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {showDetails ? (
-                          <>
-                            {hasTranscript && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleViewDetails(note.id)}
-                              >
-                                <FileText className="mr-2 h-4 w-4" />
-                                Transcript
-                              </Button>
-                            )}
-                            {hasSummary && (
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => handleViewDetails(note.id)}
-                              >
-                                <Sparkles className="mr-2 h-4 w-4" />
-                                Summary
-                              </Button>
-                            )}
-                          </>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewDetails(note.id)}
-                            disabled={isSelected && loadingDetails}
-                          >
-                            {isSelected && loadingDetails ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Loading...
-                              </>
-                            ) : (
-                              <>
-                                <FileText className="mr-2 h-4 w-4" />
-                                View Details
-                              </>
-                            )}
-                          </Button>
-                        )}
-                      </div>
-                      {showDetails && (
-                        <div className="mt-4 pt-4 border-t space-y-2">
-                          {noteDetails.map((detail) => (
-                            <div key={detail.id} className="text-sm">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Badge variant="secondary" className="text-xs">
-                                  {detail.type === "SUMMARIZED" ? "Summary" : "Transcript"}
-                                </Badge>
-                                {detail.inputToken && detail.outputToken && (
-                                  <span className="text-xs text-muted-foreground">
-                                    Tokens: {detail.inputToken} in / {detail.outputToken} out
-                                  </span>
-                                )}
+                      
+                      {/* Audio Player */}
+                      {noteAudioUrl && (
+                        <div className="mb-3 p-2.5 bg-primary/5 rounded-lg border border-primary/20">
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 shrink-0"
+                              onClick={() => noteAudioUrl && toggleNotePlayback(note.id, noteAudioUrl)}
+                            >
+                              {isNotePlaying ? (
+                                <Pause className="h-4 w-4" />
+                              ) : (
+                                <Play className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <div className="flex-1 space-y-1">
+                              <input
+                                type="range"
+                                min="0"
+                                max={noteDurations.get(note.id) || 0}
+                                value={noteCurrentTimes.get(note.id) || 0}
+                                onChange={(e) => handleNoteSeek(note.id, parseFloat(e.target.value))}
+                                className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                              />
+                              <div className="flex justify-between text-xs text-muted-foreground">
+                                <span>{formatTime(Math.floor(noteCurrentTimes.get(note.id) || 0))}</span>
+                                <span>{formatTime(Math.floor(noteDurations.get(note.id) || 0))}</span>
                               </div>
-                              <p className="text-muted-foreground whitespace-pre-wrap">
-                                {detail.text}
-                              </p>
                             </div>
-                          ))}
+                          </div>
                         </div>
                       )}
+
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewDetails(note.id)}
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          View Details
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
+                {/* Hidden audio element for this note */}
+                {noteAudioUrl && (
+                  <audio
+                    ref={(el) => {
+                      if (el) {
+                        audioRefsMap.current.set(note.id, el)
+                      } else {
+                        audioRefsMap.current.delete(note.id)
+                      }
+                    }}
+                    src={noteAudioUrl}
+                    preload="none"
+                    onEnded={() => handleAudioEnded(note.id)}
+                    className="hidden"
+                  />
+                )}
               </Card>
             )
           })
@@ -485,6 +673,44 @@ export function VoiceNotes() {
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {/* Audio Playback Section */}
+            {audioBlob && audioUrl && (
+              <div className="space-y-3 p-4 bg-muted/50 rounded-lg border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Volume2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Preview Recording</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={togglePlayback}
+                    className="shrink-0"
+                  >
+                    {isPlaying ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <div className="flex-1 space-y-1">
+                    <input
+                      type="range"
+                      min="0"
+                      max={duration || 0}
+                      value={currentTime}
+                      onChange={handleSeek}
+                      className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{formatTime(Math.floor(currentTime))}</span>
+                      <span>{formatTime(Math.floor(duration))}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Language Detection */}
             <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg">
               <Globe className="h-5 w-5 text-primary" />
@@ -559,6 +785,12 @@ export function VoiceNotes() {
                 variant="outline"
                 className="flex-1"
                 onClick={() => {
+                  // Stop audio if playing
+                  if (audioRef.current) {
+                    audioRef.current.pause()
+                    audioRef.current.currentTime = 0
+                  }
+                  setIsPlaying(false)
                   setShowOptions(false)
                   setAudioBlob(null)
                 }}
@@ -584,6 +816,16 @@ export function VoiceNotes() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Hidden audio element for playback */}
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          preload="auto"
+          className="hidden"
+        />
+      )}
     </div>
   )
 }

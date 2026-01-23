@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -19,11 +19,11 @@ import {
 } from "@/components/ui/dialog"
 import { 
   ArrowLeft, Calendar, Loader2, Sparkles, FileText, 
-  MoreVertical, Pencil, Check, X 
+  MoreVertical, Pencil, Check, X, Play, Pause, Volume2
 } from "lucide-react"
 import { toast } from "sonner"
 import { useJobStatus } from "../hooks/use-voice-transcription"
-import { voiceNotesService } from "../services/voice-notes.service"
+import { voiceNotesService, voiceNotesDetailsService } from "../services/voice-notes.service"
 import type { VoiceNote } from "../types/voice-notes-list.types"
 import type {SummaryStyle } from "../types/voice-notes.types"
 import { VoiceNoteDetail } from "../types/voice-notes-list.types"
@@ -36,35 +36,169 @@ interface VoiceNoteDetailViewProps {
   onRefresh: () => void
 }
 
+// Utility function to convert supabase:// URL to public URL
+const convertSupabaseUrl = (internalUrl: string): string => {
+  const PROJECT_ID = process.env.REACT_APP_SUPABASE_PROJECT_ID || ""
+  if (!PROJECT_ID) {
+    console.warn("REACT_APP_SUPABASE_PROJECT_ID is not set in environment variables")
+    return internalUrl
+  }
+  const cleanPath = internalUrl.replace("supabase://", "")
+  return `https://${PROJECT_ID}.supabase.co/storage/v1/object/public/${cleanPath}`
+}
+
 export function VoiceNoteDetailView({ note, details, isLoading, onBack, onRefresh }: VoiceNoteDetailViewProps) {
   const [summaryJobId, setSummaryJobId] = useState<string | null>(null)
   const [activeDetailId, setActiveDetailId] = useState<number | null>(null)
   const [showStyleDialog, setShowStyleDialog] = useState(false)
   const [selectedStyle, setSelectedStyle] = useState<SummaryStyle>("FORMAL")
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const hasRefreshedRef = useRef(false)
   const { status: jobStatus, checkStatus } = useJobStatus(summaryJobId)
 
- useEffect(() => {
-    if (!summaryJobId) return
-    console.log("Starting polling for:", summaryJobId)
-    const pollInterval = setInterval(async () => {
-      const currentStatus = await checkStatus() 
-      console.log("Poll result:", currentStatus) 
-      if (currentStatus?.status === "COMPLETED") {
-        clearInterval(pollInterval)
-        toast.success("Summary generated!")
-        setSummaryJobId(null)
-        setActiveDetailId(null)
-        onRefresh() 
-      } else if (currentStatus?.status === "FAILED") {
-        clearInterval(pollInterval)
-        toast.error("Summarization failed")
-        setSummaryJobId(null)
-        setActiveDetailId(null)
-      }
-    }, 2000)
+  // Get audio URL from note
+  const audioUrl = note?.voiceNoteUrl 
+    ? (note.voiceNoteUrl.startsWith("supabase://") 
+        ? convertSupabaseUrl(note.voiceNoteUrl) 
+        : note.voiceNoteUrl)
+    : null
 
-    return () => clearInterval(pollInterval)
-  }, [summaryJobId, checkStatus, onRefresh])
+  // Audio playback controls
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio || !audioUrl) return
+
+    const updateTime = () => setCurrentTime(audio.currentTime)
+    const updateDuration = () => {
+      if (audio.duration && isFinite(audio.duration)) {
+        setDuration(audio.duration)
+      }
+    }
+    const handleEnded = () => {
+      setIsPlaying(false)
+      setCurrentTime(0)
+    }
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => setIsPlaying(false)
+
+    audio.addEventListener("timeupdate", updateTime)
+    audio.addEventListener("loadedmetadata", updateDuration)
+    audio.addEventListener("canplay", updateDuration)
+    audio.addEventListener("ended", handleEnded)
+    audio.addEventListener("play", handlePlay)
+    audio.addEventListener("pause", handlePause)
+
+    // Load audio metadata
+    audio.load()
+
+    return () => {
+      audio.removeEventListener("timeupdate", updateTime)
+      audio.removeEventListener("loadedmetadata", updateDuration)
+      audio.removeEventListener("canplay", updateDuration)
+      audio.removeEventListener("ended", handleEnded)
+      audio.removeEventListener("play", handlePlay)
+      audio.removeEventListener("pause", handlePause)
+    }
+  }, [audioUrl])
+
+  const togglePlayback = async () => {
+    if (!audioRef.current) return
+
+    try {
+      if (isPlaying) {
+        audioRef.current.pause()
+      } else {
+        await audioRef.current.play()
+      }
+    } catch (error) {
+      console.error("Error playing audio:", error)
+      toast.error("Failed to play audio. Please try again.")
+    }
+  }
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!audioRef.current) return
+    const newTime = parseFloat(e.target.value)
+    audioRef.current.currentTime = newTime
+    setCurrentTime(newTime)
+  }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
+
+  // Poll job status and watch for completion
+  useEffect(() => {
+    if (!summaryJobId) return
+
+    let pollInterval: NodeJS.Timeout | null = null
+
+    const startPolling = async () => {
+      try {
+        // Check initial status
+        const initialStatus = await checkStatus()
+        if (initialStatus?.status === "COMPLETED" || initialStatus?.status === "FAILED") {
+          return
+        }
+      } catch (err) {
+        console.error("Failed to check initial status:", err)
+        return
+      }
+
+      // Start polling
+      pollInterval = setInterval(async () => {
+        try {
+          await checkStatus()
+        } catch (err) {
+          console.error("Failed to check status:", err)
+          if (pollInterval) clearInterval(pollInterval)
+        }
+      }, 2000)
+    }
+
+    startPolling()
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval)
+    }
+  }, [summaryJobId, checkStatus])
+
+  // Watch jobStatus changes and auto-refresh when completed
+  useEffect(() => {
+    if (!jobStatus || !summaryJobId) {
+      hasRefreshedRef.current = false
+      return
+    }
+
+    if (jobStatus.status === "COMPLETED" && !hasRefreshedRef.current) {
+      hasRefreshedRef.current = true
+      toast.success("Summary generated!")
+      
+      // Refresh immediately and then again after a short delay to ensure we get the latest data
+      onRefresh()
+      
+      // Clear job ID after starting refresh
+      setSummaryJobId(null)
+      setActiveDetailId(null)
+      
+      // Refresh again after a delay to ensure backend has fully processed
+      const refreshTimer = setTimeout(() => {
+        onRefresh()
+      }, 1500)
+      
+      return () => clearTimeout(refreshTimer)
+    } else if (jobStatus.status === "FAILED") {
+      toast.error(jobStatus.error || "Summarization failed")
+      setSummaryJobId(null)
+      setActiveDetailId(null)
+      hasRefreshedRef.current = false
+    }
+  }, [jobStatus, summaryJobId, onRefresh])
 
   const handleOpenSummarizeDialog = (id: number) => {
     setActiveDetailId(id)
@@ -91,6 +225,28 @@ export function VoiceNoteDetailView({ note, details, isLoading, onBack, onRefres
     }
   }
 
+  const handleSaveDetail = async (id: number, newText: string) => {
+    if (!details) return
+    
+    const detail = details.find(d => d.id === id)
+    if (!detail) return
+
+    try {
+      await voiceNotesDetailsService.update(id, {
+        text: newText,
+        type: detail.type,
+        detailType: detail.detailType,
+        voiceNoteId: detail.voiceNoteId,
+        inputToken: detail.inputToken,
+        outputToken: detail.outputToken,
+      })
+      toast.success("Voice note detail updated successfully!")
+      onRefresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update voice note detail")
+    }
+  }
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return "Unknown date"
     return new Date(dateString).toLocaleDateString("en-US", { 
@@ -113,6 +269,48 @@ export function VoiceNoteDetailView({ note, details, isLoading, onBack, onRefres
         </div>
       </div>
 
+      {/* Audio Playback Section */}
+      {audioUrl && (
+        <Card className="border-l-4 border-l-primary">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Original Recording</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={togglePlayback}
+                className="shrink-0"
+              >
+                {isPlaying ? (
+                  <Pause className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+              </Button>
+              <div className="flex-1 space-y-1">
+                <input
+                  type="range"
+                  min="0"
+                  max={duration || 0}
+                  value={currentTime}
+                  onChange={handleSeek}
+                  className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{formatTime(Math.floor(currentTime))}</span>
+                  <span>{formatTime(Math.floor(duration))}</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-6">
         {isLoading ? (
           <div className="flex flex-col items-center py-12">
@@ -125,7 +323,7 @@ export function VoiceNoteDetailView({ note, details, isLoading, onBack, onRefres
               <DetailItem 
                 key={detail.id} 
                 detail={detail} 
-                onSave={(id, text) => console.log(id, text)}
+                onSave={handleSaveDetail}
                 onSummarize={handleOpenSummarizeDialog}
               />
             ))}
@@ -179,6 +377,16 @@ export function VoiceNoteDetailView({ note, details, isLoading, onBack, onRefres
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Hidden audio element for playback */}
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          preload="auto"
+          className="hidden"
+        />
+      )}
     </div>
   )
 }
@@ -245,7 +453,7 @@ function DetailItem({ detail, onSave, onSummarize }: DetailItemProps) {
             </div>
           </div>
         ) : (
-          <div className="text-sm leading-relaxed whitespace-pre-wrap">{detail.text}</div>
+          <div className="text-sm leading-relaxed whitespace-pre-wrap text-black">{detail.text}</div>
         )}
       </CardContent>
     </Card>

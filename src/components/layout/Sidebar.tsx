@@ -5,7 +5,8 @@ import {
   Settings, 
   UserCog,
   LogOut,
-  Mic
+  Mic,
+  Key
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -37,6 +38,11 @@ const menuItems = [
     href: "/member-levels",
   },
   {
+    title: "Member Level Codes",
+    icon: Key,
+    href: "/member-level-codes",
+  },
+  {
     title: "Users",
     icon: Users,
     href: "/users",
@@ -66,7 +72,10 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1 p-4">
         {menuItems.map((item) => {
           const Icon = item.icon
-          const isActive = location.pathname === item.href
+          // For voice-notes, also check if pathname starts with /voice-notes
+          const isActive = item.href === "/voice-notes" 
+            ? location.pathname.startsWith("/voice-notes")
+            : location.pathname === item.href
           
           return (
             <Link

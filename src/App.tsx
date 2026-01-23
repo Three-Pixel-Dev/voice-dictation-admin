@@ -5,7 +5,9 @@ import { MainLayout } from "@/components/layout/MainLayout"
 import { SignIn } from "@/features/auth/pages/SignIn"
 import { Dashboard } from "@/features/dashboard/pages/Dashboard"
 import { VoiceNotes } from "@/features/voice-notes/pages/VoiceNotes"
+import { VoiceNoteDetail } from "@/features/voice-notes/pages/VoiceNoteDetail"
 import { MemberLevels } from "@/features/member-levels/pages/MemberLevels"
+import { MemberLevelCodes } from "@/features/member-levels/pages/MemberLevelCodes"
 import { Users } from "@/features/users/pages/Users"
 import { Settings } from "@/features/settings/pages/Settings"
 import "./App.css"
@@ -60,11 +62,35 @@ function App() {
           }
         />
         <Route
+          path="/voice-notes/:id"
+          element={
+            isAuthenticated ? (
+              <MainLayout>
+                <VoiceNoteDetail />
+              </MainLayout>
+            ) : (
+              <Navigate to="/signin" />
+            )
+          }
+        />
+        <Route
           path="/member-levels"
           element={
             isAuthenticated ? (
               <MainLayout>
                 <MemberLevels />
+              </MainLayout>
+            ) : (
+              <Navigate to="/signin" />
+            )
+          }
+        />
+        <Route
+          path="/member-level-codes"
+          element={
+            isAuthenticated ? (
+              <MainLayout>
+                <MemberLevelCodes />
               </MainLayout>
             ) : (
               <Navigate to="/signin" />
