@@ -214,8 +214,9 @@ export function VoiceNoteDetailView({ note, details, isLoading, onBack, onRefres
         voiceNoteDetailId: activeDetailId,
         style: selectedStyle
       })
-      
+      console.log("Response is ",response)
       if (response?.jobId) {
+      console.log("Job id is ",response.jobId)
       setSummaryJobId(response.jobId)
     }
       toast.info("Generating summary...")
