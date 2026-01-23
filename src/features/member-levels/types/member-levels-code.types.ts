@@ -4,6 +4,7 @@ export interface MemberLevelCode {
   id: number
   code: string
   activatedAt?: string
+  activatedUserName?: string
   expiredAt?: string
   memberLevelId: number
   createdUserName?: string

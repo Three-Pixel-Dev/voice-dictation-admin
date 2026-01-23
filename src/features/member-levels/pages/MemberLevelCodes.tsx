@@ -268,6 +268,7 @@ export function MemberLevelCodes() {
                     <TableHead>Code</TableHead>
                     <TableHead>Member Level</TableHead>
                     <TableHead>Activated At</TableHead>
+                    <TableHead>Activated User Name</TableHead>
                     <TableHead>Expired At</TableHead>
                     <TableHead>Created User Name</TableHead>
                     <TableHead>Created At</TableHead>
@@ -287,6 +288,7 @@ export function MemberLevelCodes() {
                           )?.name || `Level ${code.memberLevelId}`}
                         </TableCell>
                         <TableCell>{formatDate(code.activatedAt)}</TableCell>
+                        <TableCell>{code.activatedUserName || "-"}</TableCell>
                         <TableCell>{formatDate(code.expiredAt)}</TableCell>
                         <TableCell>{code.createdUserName || "-"}</TableCell>
                         <TableCell>
@@ -318,7 +320,7 @@ export function MemberLevelCodes() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         No member level codes found
                       </TableCell>
                     </TableRow>
