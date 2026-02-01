@@ -43,7 +43,24 @@ async function handleResponse<T>(response: Response): Promise<T> {
     )
   }
 
-  return response.json()
+  // Handle 204 No Content - no body to parse
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  // Check if response has content to parse
+  const contentType = response.headers.get("content-type")
+  if (!contentType || !contentType.includes("application/json")) {
+    return undefined as T
+  }
+
+  // Check if response has body
+  const text = await response.text()
+  if (!text || text.trim() === "") {
+    return undefined as T
+  }
+
+  return JSON.parse(text)
 }
 
 export const apiClient = {

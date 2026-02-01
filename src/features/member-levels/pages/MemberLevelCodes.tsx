@@ -11,13 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Combobox } from "@/components/ui/combobox"
 import {
   Dialog,
   DialogContent,
@@ -201,22 +195,19 @@ export function MemberLevelCodes() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="grid gap-2">
               <Label htmlFor="memberLevel">Member Level</Label>
-              <Select
+              <Combobox
+                options={[
+                  { value: "all", label: "All Member Levels" },
+                  ...(memberLevelsData?.content?.map((level) => ({
+                    value: level.id.toString(),
+                    label: level.name,
+                  })) || []),
+                ]}
                 value={filter.memberLevelId?.toString() || "all"}
                 onValueChange={handleFilterChange}
-              >
-                <SelectTrigger id="memberLevel">
-                  <SelectValue placeholder="All Member Levels" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Member Levels</SelectItem>
-                  {memberLevelsData?.content?.map((level) => (
-                    <SelectItem key={level.id} value={level.id.toString()}>
-                      {level.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="All Member Levels"
+                searchPlaceholder="Search member level..."
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="codeSearch">Code Search</Label>
@@ -373,23 +364,20 @@ export function MemberLevelCodes() {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="memberLevel">Member Level</Label>
-              <Select
+              <Combobox
+                options={
+                  memberLevelsData?.content?.map((level) => ({
+                    value: level.id.toString(),
+                    label: level.name,
+                  })) || []
+                }
                 value={editFormData.memberLevelId?.toString() || ""}
                 onValueChange={(value) =>
                   setEditFormData({ ...editFormData, memberLevelId: parseInt(value) })
                 }
-              >
-                <SelectTrigger id="memberLevel">
-                  <SelectValue placeholder="Select a member level" />
-                </SelectTrigger>
-                <SelectContent>
-                  {memberLevelsData?.content?.map((level) => (
-                    <SelectItem key={level.id} value={level.id.toString()}>
-                      {level.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select a member level"
+                searchPlaceholder="Search member level..."
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="code">Code</Label>

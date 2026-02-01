@@ -29,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Combobox } from "@/components/ui/combobox"
 import { Plus, Edit, Trash2, Loader2, MoreVertical, Sparkles } from "lucide-react"
 import {
   DropdownMenu,
@@ -40,12 +41,19 @@ import { useMemberLevels, useCreateMemberLevel, useUpdateMemberLevel, useDeleteM
 import type { MemberLevel, MemberLevelRequest } from "../types/member-levels.types"
 import { memberLevelsCodeService, generateMultipleCodes } from "../services/member-levels-code.service"
 import { Textarea } from "@/components/ui/textarea"
+import { useCodeValues } from "@/features/code-values/hooks/use-code-values"
+import type { CodeValueListResponse } from "@/features/code-values/services/code-values.service"
 import { toast } from "sonner"
 
 export function MemberLevels() {
   const [page, setPage] = useState(0)
   const [size] = useState(10)
-  const { data, loading, error, refetch } = useMemberLevels({ page, size })
+  const { data, loading, error, refetch } = useMemberLevels({ 
+    page, 
+    size, 
+    sortBy: "id", 
+    sortDirection: "DESC" 
+  })
   const { create, loading: creating } = useCreateMemberLevel()
   const { update, loading: updating } = useUpdateMemberLevel()
   const { delete: deleteMemberLevel, loading: deleting } = useDeleteMemberLevel()
@@ -58,19 +66,41 @@ export function MemberLevels() {
   const [isGeneratingCodes, setIsGeneratingCodes] = useState(false)
   const [isSavingCodes, setIsSavingCodes] = useState(false)
   const [codeValidationErrors, setCodeValidationErrors] = useState<Map<string, string>>(new Map())
+  const { data: currencies, loading: loadingCurrencies } = useCodeValues({ constantValue: "CURRENCY" })
   
   const [formData, setFormData] = useState<MemberLevelRequest>({
     name: "",
     durationDays: undefined,
     durationMonths: undefined,
+    maxJob: undefined,
+    amount: undefined,
+    currencyId: null,
   })
+
+  // Helper functions for formatting amount with commas
+  const formatAmount = (value: number | undefined): string => {
+    if (value === undefined || value === null) return ""
+    // Format with commas and handle decimals
+    return value.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })
+  }
+
+  const parseAmount = (value: string): number | undefined => {
+    if (!value.trim()) return undefined
+    // Remove commas and parse
+    const cleaned = value.replace(/,/g, '')
+    const parsed = parseFloat(cleaned)
+    return isNaN(parsed) ? undefined : parsed
+  }
 
   const handleCreate = async () => {
     try {
       await create(formData)
       toast.success("Member level created successfully")
       setIsCreateDialogOpen(false)
-      setFormData({ name: "", durationDays: undefined, durationMonths: undefined })
+      setFormData({ name: "", durationDays: undefined, durationMonths: undefined, maxJob: undefined, amount: undefined, currencyId: null })
       refetch()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create member level")
@@ -83,6 +113,9 @@ export function MemberLevels() {
       name: level.name,
       durationDays: level.durationDays ?? undefined,
       durationMonths: level.durationMonths ?? undefined,
+      maxJob: level.maxJob ?? undefined,
+      amount: level.amount ?? undefined,
+      currencyId: level.currency?.id || null,
     })
   }
 
@@ -92,7 +125,7 @@ export function MemberLevels() {
       await update(editingLevel.id, formData)
       toast.success("Member level updated successfully")
       setEditingLevel(null)
-      setFormData({ name: "", durationDays: undefined, durationMonths: undefined })
+      setFormData({ name: "", durationDays: undefined, durationMonths: undefined, maxJob: undefined, amount: undefined, currencyId: null })
       refetch()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update member level")
@@ -237,6 +270,9 @@ export function MemberLevels() {
                   <TableHead>Name</TableHead>
                   <TableHead>Duration Days</TableHead>
                   <TableHead>Duration Months</TableHead>
+                  <TableHead>Max Jobs</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Currency</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -247,6 +283,9 @@ export function MemberLevels() {
                       <TableCell className="font-medium">{level.name}</TableCell>
                       <TableCell>{level.durationDays ?? "-"}</TableCell>
                       <TableCell>{level.durationMonths ?? "-"}</TableCell>
+                      <TableCell>{level.maxJob ?? "-"}</TableCell>
+                      <TableCell>{level.amount ? formatAmount(level.amount) : "-"}</TableCell>
+                      <TableCell>{level.currency ? `${level.currency.codeValue} - ${level.currency.description}` : "-"}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -277,7 +316,7 @@ export function MemberLevels() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No member levels found
                     </TableCell>
                   </TableRow>
@@ -335,6 +374,56 @@ export function MemberLevels() {
                   })
                 }
                 placeholder="Enter duration in months"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="maxJob">Max Jobs</Label>
+              <Input
+                id="maxJob"
+                type="number"
+                value={formData.maxJob ?? ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    maxJob: e.target.value ? parseInt(e.target.value) : undefined,
+                  })
+                }
+                placeholder="Enter maximum number of jobs"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="amount">Amount</Label>
+              <Input
+                id="amount"
+                type="text"
+                value={formatAmount(formData.amount)}
+                onChange={(e) => {
+                  const parsed = parseAmount(e.target.value)
+                  setFormData({
+                    ...formData,
+                    amount: parsed,
+                  })
+                }}
+                placeholder="Enter amount"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="currency">Currency</Label>
+              <Combobox
+                options={currencies.map((currency) => ({
+                  value: currency.id.toString(),
+                  label: `${currency.codeValue} - ${currency.description}`,
+                }))}
+                value={formData.currencyId?.toString() || ""}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    currencyId: value ? parseInt(value) : null,
+                  })
+                }
+                placeholder="Select currency"
+                searchPlaceholder="Search currency..."
+                disabled={loadingCurrencies}
               />
             </div>
           </div>
@@ -400,6 +489,56 @@ export function MemberLevels() {
                   })
                 }
                 placeholder="Enter duration in months"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-maxJob">Max Jobs</Label>
+              <Input
+                id="edit-maxJob"
+                type="number"
+                value={formData.maxJob ?? ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    maxJob: e.target.value ? parseInt(e.target.value) : undefined,
+                  })
+                }
+                placeholder="Enter maximum number of jobs"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-amount">Amount</Label>
+              <Input
+                id="edit-amount"
+                type="text"
+                value={formatAmount(formData.amount)}
+                onChange={(e) => {
+                  const parsed = parseAmount(e.target.value)
+                  setFormData({
+                    ...formData,
+                    amount: parsed,
+                  })
+                }}
+                placeholder="Enter amount"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-currency">Currency</Label>
+              <Combobox
+                options={currencies.map((currency) => ({
+                  value: currency.id.toString(),
+                  label: `${currency.codeValue} - ${currency.description}`,
+                }))}
+                value={formData.currencyId?.toString() || ""}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    currencyId: value ? parseInt(value) : null,
+                  })
+                }
+                placeholder="Select currency"
+                searchPlaceholder="Search currency..."
+                disabled={loadingCurrencies}
               />
             </div>
           </div>

@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner"
 import { useJobStatus } from "../hooks/use-voice-transcription"
 import { voiceNotesService, voiceNotesDetailsService } from "../services/voice-notes.service"
+import { useCodeValues } from "@/features/code-values/hooks/use-code-values"
 import type { VoiceNote } from "../types/voice-notes-list.types"
 import type {SummaryStyle } from "../types/voice-notes.types"
 import { VoiceNoteDetail } from "../types/voice-notes-list.types"
@@ -58,6 +59,7 @@ export function VoiceNoteDetailView({ note, details, isLoading, onBack, onRefres
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const hasRefreshedRef = useRef(false)
   const { status: jobStatus, checkStatus } = useJobStatus(summaryJobId)
+  const { data: summaryStyles, loading: loadingStyles } = useCodeValues({ constantValue: "SUMMARY_STYLE" })
 
   // Get audio URL from note
   const audioUrl = note?.voiceNoteUrl 
@@ -70,6 +72,13 @@ export function VoiceNoteDetailView({ note, details, isLoading, onBack, onRefres
     if (!details) return []
     return [...details].sort((a, b) => b.id - a.id)
   }, [details])
+
+  // Set default selected style to first one when styles are loaded
+  useEffect(() => {
+    if (summaryStyles.length > 0 && !selectedStyle) {
+      setSelectedStyle(summaryStyles[0].codeValue as SummaryStyle)
+    }
+  }, [summaryStyles, selectedStyle])
 
   // Audio playback controls
   useEffect(() => {
@@ -365,17 +374,27 @@ export function VoiceNoteDetailView({ note, details, isLoading, onBack, onRefres
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-3 gap-2 py-4">
-            {(["FORMAL", "INFORMAL", "NARRATIVE", "BULLET_POINTS"] as SummaryStyle[]).map((style) => (
-              <Button
-                key={style}
-                variant={selectedStyle === style ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedStyle(style)}
-                className="capitalize"
-              >
-                {style.toLowerCase().replace("_", " ")}
-              </Button>
-            ))}
+            {loadingStyles ? (
+              <div className="col-span-3 flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : summaryStyles.length > 0 ? (
+              summaryStyles.map((style) => (
+                <Button
+                  key={style.id}
+                  variant={selectedStyle === style.codeValue ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedStyle(style.codeValue as SummaryStyle)}
+                  className="capitalize"
+                >
+                  {style.description || style.codeValue.toLowerCase().replace("_", " ")}
+                </Button>
+              ))
+            ) : (
+              <div className="col-span-3 text-sm text-muted-foreground text-center py-4">
+                No summary styles available
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowStyleDialog(false)}>Cancel</Button>
@@ -459,7 +478,7 @@ function DetailItem({ detail, onSave, onSummarize }: DetailItemProps) {
             </div>
           </div>
         ) : (
-          <div className="text-sm leading-relaxed whitespace-pre-wrap text-black">{detail.text}</div>
+          <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{detail.text}</div>
         )}
       </CardContent>
     </Card>

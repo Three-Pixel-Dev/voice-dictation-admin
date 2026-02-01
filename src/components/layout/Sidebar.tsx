@@ -9,7 +9,7 @@ import {
   UserCog,
   LogOut,
   Mic,
-  Key
+  Key,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -120,7 +120,10 @@ export function Sidebar() {
       <div className="border-t p-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start gap-3">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-3 hover:bg-muted/50 hover:text-foreground"
+            >
               <Avatar className="h-8 w-8">
                 <AvatarImage src="" alt={profileName} />
                 <AvatarFallback>{profileName.slice(0, 2).toUpperCase()}</AvatarFallback>

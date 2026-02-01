@@ -42,6 +42,8 @@ export function Users() {
   const { data, loading, error, refetch } = useUsers({ 
     page, 
     size,
+    sortBy: "id",
+    sortDirection: "DESC",
     filter: debouncedSearchQuery ? { email: debouncedSearchQuery } : undefined
   })
   const { delete: deleteUser, loading: deleting } = useDeleteUser()
