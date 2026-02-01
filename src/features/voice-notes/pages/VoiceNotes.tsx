@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { useVoiceTranscription, useJobStatus } from "../hooks/use-voice-transcription"
 import { useVoiceNotes, useVoiceNoteDetails } from "../hooks/use-voice-notes"
+import { useCodeValues } from "@/features/code-values/hooks/use-code-values"
 import type { TaskType, SummaryStyle } from "../types/voice-notes.types"
 import type { VoiceNote } from "../types/voice-notes-list.types"
 import { toast } from "sonner"
@@ -35,7 +36,8 @@ export function VoiceNotes() {
   const [isHolding, setIsHolding] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
   const [outputMode, setOutputMode] = useState<"transcribe" | "summarize">("transcribe")
-  const [summaryStyle, setSummaryStyle] = useState<"formal" | "informal" | "book">("formal")
+  const [summaryStyle, setSummaryStyle] = useState<string>("")
+  const { data: summaryStyles } = useCodeValues({ constantValue: "SUMMARY_STYLE" })
   const [recordingTime, setRecordingTime] = useState(0)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [processingJobId, setProcessingJobId] = useState<string | null>(null)
@@ -64,6 +66,13 @@ export function VoiceNotes() {
     sortDirection: "DESC",
     autoFetch: true,
   })
+
+  // Set default summary style when styles are loaded
+  useEffect(() => {
+    if (summaryStyles.length > 0 && !summaryStyle) {
+      setSummaryStyle(summaryStyles[0].codeValue)
+    }
+  }, [summaryStyles, summaryStyle])
 
   useEffect(() => {
     if (isRecording) {
@@ -261,13 +270,7 @@ export function VoiceNotes() {
     let style: SummaryStyle | undefined = undefined
 
     if (outputMode === "summarize") {
-      // Map UI style to API style
-      const styleMap: Record<string, SummaryStyle> = {
-        formal: "FORMAL",
-        informal: "INFORMAL",
-        book: "NARRATIVE",
-      }
-      style = styleMap[summaryStyle] || "FORMAL"
+      style = (summaryStyle || summaryStyles[0]?.codeValue || "FORMAL") as SummaryStyle
     }
 
     try {
@@ -753,27 +756,22 @@ export function VoiceNotes() {
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold">Summary Style</h3>
                 <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    variant={summaryStyle === "formal" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSummaryStyle("formal")}
-                  >
-                    Formal
-                  </Button>
-                  <Button
-                    variant={summaryStyle === "informal" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSummaryStyle("informal")}
-                  >
-                    Informal
-                  </Button>
-                  <Button
-                    variant={summaryStyle === "book" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSummaryStyle("book")}
-                  >
-                    Book Style
-                  </Button>
+                  {summaryStyles.length > 0 ? (
+                    summaryStyles.map((style) => (
+                      <Button
+                        key={style.id}
+                        variant={summaryStyle === style.codeValue ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSummaryStyle(style.codeValue)}
+                      >
+                        {style.description || style.codeValue}
+                      </Button>
+                    ))
+                  ) : (
+                    <div className="col-span-3 text-sm text-muted-foreground">
+                      Loading styles...
+                    </div>
+                  )}
                 </div>
               </div>
             )}
