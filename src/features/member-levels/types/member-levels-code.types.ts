@@ -7,7 +7,7 @@ export interface MemberLevelCode {
   activatedUserName?: string
   expiredAt?: string
   memberLevelId: number
-  createdUserName?: string
+  purchasedUserName?: string
   masterData?: MasterData
 }
 

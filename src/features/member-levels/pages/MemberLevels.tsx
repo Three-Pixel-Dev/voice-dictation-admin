@@ -189,7 +189,7 @@ export function MemberLevels() {
           await memberLevelsCodeService.create({
             code,
             memberLevelId: codeGenerationLevel.id,
-            userId: userId,
+            userId: 0,
           })
           successCount++
         } catch (err) {
