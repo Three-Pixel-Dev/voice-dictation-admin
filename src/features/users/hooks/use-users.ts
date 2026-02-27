@@ -8,6 +8,7 @@ import type {
   User,
   UserRequest,
   UserFilter,
+  CreateUserWithLoginCodeRequest,
 } from "../types/users.types"
 
 interface UseUsersOptions {
@@ -174,6 +175,32 @@ export function useDeleteUser() {
 
   return {
     delete: deleteUser,
+    loading,
+    error,
+  }
+}
+
+export function useCreateUserWithLoginCode() {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  const create = async (data: CreateUserWithLoginCodeRequest) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await usersService.createWithLoginCode(data)
+      return result
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Failed to create user with login code")
+      setError(error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return {
+    create,
     loading,
     error,
   }

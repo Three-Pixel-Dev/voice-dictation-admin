@@ -3,6 +3,7 @@ import type { MasterData } from "@/types/api"
 export interface User {
   id: number
   email: string
+  loginCode?: string
   profileId?: number
   name?: string
   masterData?: MasterData
@@ -25,4 +26,9 @@ export interface ProfileRequest {
 export interface UserFilter {
   email?: string
   profileId?: number
+}
+
+export interface CreateUserWithLoginCodeRequest {
+  loginCode: string
+  memberLevelId: number
 }
