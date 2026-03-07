@@ -5,6 +5,7 @@ import { SidebarProvider } from "@/lib/sidebar-context"
 import { Toaster } from "@/components/ui/sonner"
 import { MainLayout } from "@/components/layout/MainLayout"
 import { SignIn } from "@/features/auth/pages/SignIn"
+import { Unauthorized } from "@/features/auth/pages/Unauthorized"
 import { Dashboard } from "@/features/dashboard/pages/Dashboard"
 import { VoiceNotes } from "@/features/voice-notes/pages/VoiceNotes"
 import { VoiceNoteDetail } from "@/features/voice-notes/pages/VoiceNoteDetail"
@@ -16,23 +17,44 @@ import { authService } from "@/features/auth/services/auth.service"
 import "./App.css"
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated())
+  const hasTokenOnLoad = authService.isAuthenticated()
+  const [authChecking, setAuthChecking] = useState(hasTokenOnLoad)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
-    const checkAuthStatus = () => {
-      setIsAuthenticated(authService.isAuthenticated())
-    }
+    if (!authChecking) return
+    authService.validateSession().then((valid) => {
+      setIsAuthenticated(valid)
+      setAuthChecking(false)
+    })
+  }, [authChecking])
 
-    // Listen for logout event
-    window.addEventListener("auth-logout", checkAuthStatus)
-    // Check auth status on storage change (handles logout from other tabs)
-    window.addEventListener("storage", checkAuthStatus)
-    
+  useEffect(() => {
+    const onAuthChange = () => {
+      if (!authService.isAuthenticated()) {
+        setIsAuthenticated(false)
+        setAuthChecking(false)
+      }
+    }
+    window.addEventListener("auth-logout", onAuthChange)
+    window.addEventListener("storage", onAuthChange)
     return () => {
-      window.removeEventListener("auth-logout", checkAuthStatus)
-      window.removeEventListener("storage", checkAuthStatus)
+      window.removeEventListener("auth-logout", onAuthChange)
+      window.removeEventListener("storage", onAuthChange)
     }
   }, [])
+
+  const isAdmin = authService.isAdmin()
+
+  if (authChecking) {
+    return (
+      <ThemeProvider defaultTheme="system" storageKey="voice-dictation-theme">
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <div className="text-muted-foreground">Checking session...</div>
+        </div>
+      </ThemeProvider>
+    )
+  }
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="voice-dictation-theme">
@@ -42,101 +64,131 @@ function App() {
       <Routes>
         <Route
           path="/signin"
-          element={isAuthenticated ? <Navigate to="/dashboard" /> : <SignIn />}
+          element={
+            isAuthenticated
+              ? isAdmin
+                ? <Navigate to="/dashboard" replace />
+                : <Navigate to="/unauthorized" replace />
+              : <SignIn />
+          }
+        />
+        <Route
+          path="/unauthorized"
+          element={
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : <Unauthorized />
+          }
         />
         <Route
           path="/"
           element={
-            isAuthenticated ? (
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
               <MainLayout>
                 <Dashboard />
               </MainLayout>
-            ) : (
-              <Navigate to="/signin" />
             )
           }
         />
         <Route
           path="/dashboard"
           element={
-            isAuthenticated ? (
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
               <MainLayout>
                 <Dashboard />
               </MainLayout>
-            ) : (
-              <Navigate to="/signin" />
             )
           }
         />
         <Route
           path="/voice-notes"
           element={
-            isAuthenticated ? (
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
               <MainLayout>
                 <VoiceNotes />
               </MainLayout>
-            ) : (
-              <Navigate to="/signin" />
             )
           }
         />
         <Route
           path="/voice-notes/:id"
           element={
-            isAuthenticated ? (
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
               <MainLayout>
                 <VoiceNoteDetail />
               </MainLayout>
-            ) : (
-              <Navigate to="/signin" />
             )
           }
         />
         <Route
           path="/member-levels"
           element={
-            isAuthenticated ? (
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
               <MainLayout>
                 <MemberLevels />
               </MainLayout>
-            ) : (
-              <Navigate to="/signin" />
             )
           }
         />
         <Route
           path="/member-level-codes"
           element={
-            isAuthenticated ? (
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
               <MainLayout>
                 <MemberLevelCodes />
               </MainLayout>
-            ) : (
-              <Navigate to="/signin" />
             )
           }
         />
         <Route
           path="/users"
           element={
-            isAuthenticated ? (
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
               <MainLayout>
                 <Users />
               </MainLayout>
-            ) : (
-              <Navigate to="/signin" />
             )
           }
         />
         <Route
           path="/settings"
           element={
-            isAuthenticated ? (
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
               <MainLayout>
                 <Settings />
               </MainLayout>
-            ) : (
-              <Navigate to="/signin" />
             )
           }
         />

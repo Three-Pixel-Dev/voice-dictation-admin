@@ -24,6 +24,9 @@ import { authService } from "@/features/auth/services/auth.service"
 import { profileService } from "@/features/profile/services/profile.service"
 import type { Profile } from "@/features/profile/services/profile.service"
 
+// Hidden from UI – set to true to show API Key tab again
+const SHOW_API_KEY_TAB = false
+
 export function Settings() {
   const [profileData, setProfileData] = useState({
     name: "",
@@ -149,10 +152,10 @@ export function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+        <TabsList className={`grid w-full ${SHOW_API_KEY_TAB ? "grid-cols-3" : "grid-cols-2"} lg:w-[400px]`}>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="password">Security</TabsTrigger>
-          <TabsTrigger value="api-key">API Key</TabsTrigger>
+          {SHOW_API_KEY_TAB && <TabsTrigger value="api-key">API Key</TabsTrigger>}
         </TabsList>
 
         {/* --- PROFILE TAB --- */}
@@ -308,7 +311,8 @@ export function Settings() {
           </Card>
         </TabsContent>
 
-        {/* --- API KEY TAB --- */}
+        {/* --- API KEY TAB (hidden when SHOW_API_KEY_TAB is false) --- */}
+        {SHOW_API_KEY_TAB && (
         <TabsContent value="api-key">
           <Card className="border-border/50 shadow-sm">
             <CardHeader>
@@ -481,6 +485,7 @@ export function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
       </Tabs>
     </div>
   )
