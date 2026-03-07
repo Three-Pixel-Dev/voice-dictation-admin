@@ -1,4 +1,6 @@
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8080"
+// const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://duolinkmm.com"
+// const API_BASE_URL = "https://api.expn-ai.com"
+const API_BASE_URL = "http://localhost:8080";
 
 export class ApiError extends Error {
   constructor(

@@ -7,6 +7,7 @@ import type {
 import type {
   MemberLevelCode,
   MemberLevelCodeRequest,
+  MemberLevelCodeUpdateRequest,
   MemberLevelCodeFilter,
 } from "../types/member-levels-code.types"
 
@@ -47,9 +48,9 @@ export const memberLevelsCodeService = {
   },
 
   /**
-   * Update a member level code
+   * Update a member level code (does not change activated user)
    */
-  async update(id: number, data: MemberLevelCodeRequest): Promise<MemberLevelCode> {
+  async update(id: number, data: MemberLevelCodeUpdateRequest): Promise<MemberLevelCode> {
     const response = await apiClient.put<ApiResponse<MemberLevelCode>>(
       `${BASE_URL}/${id}`,
       data

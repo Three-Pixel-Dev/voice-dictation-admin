@@ -30,11 +30,8 @@ const menuItems = [
     icon: LayoutDashboard,
     href: "/dashboard",
   },
-  {
-    title: "Voice Notes",
-    icon: Mic,
-    href: "/voice-notes",
-  },
+  // Hidden from UI – remove hidden: true to show again
+  { title: "Voice Notes", icon: Mic, href: "/voice-notes", hidden: true },
   {
     title: "Member Levels",
     icon: UserCog,
@@ -68,10 +65,14 @@ export function Sidebar() {
       const user = authService.getUser()
       if (!user?.userId) return
 
+      setEmail(user.email || "")
+
       try {
         const profile = await profileService.getByUserId(user.userId)
-        setProfileName(profile.name || "")
-        setEmail(user.email || "")
+        const currentUser = authService.getUser()
+        if (currentUser?.userId === user.userId) {
+          setProfileName(profile.name || "")
+        }
       } catch (error) {
         console.error("Failed to load profile:", error)
       }
@@ -92,7 +93,7 @@ export function Sidebar() {
       </div>
       
       <nav className="flex-1 space-y-1 p-4">
-        {menuItems.map((item) => {
+        {menuItems.filter((item) => !("hidden" in item && item.hidden)).map((item) => {
           const Icon = item.icon
           // For voice-notes, also check if pathname starts with /voice-notes
           const isActive = item.href === "/voice-notes" 
@@ -125,11 +126,11 @@ export function Sidebar() {
               className="w-full justify-start gap-3 hover:bg-muted/50 hover:text-foreground"
             >
               <Avatar className="h-8 w-8">
-                <AvatarImage src="" alt={profileName} />
-                <AvatarFallback>{profileName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                <AvatarImage src="" alt={profileName || email} />
+                <AvatarFallback>{(profileName || email || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col items-start">
-                <span className="text-sm font-medium">{profileName}</span>
+                <span className="text-sm font-medium">{profileName || email || "User"}</span>
                 <span className="text-xs text-muted-foreground">{email}</span>
               </div>
             </Button>

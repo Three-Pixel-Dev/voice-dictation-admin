@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Users, UserCog, FileText } from "lucide-react"
 import { dashboardService, DashboardStats } from "../services/dashboard.service"
 
@@ -14,11 +15,8 @@ const statConfig = [
     icon: UserCog,
     key: "memberLevels" as const,
   },
-  {
-    title: "Voice Notes",
-    icon: FileText,
-    key: "voiceNotes" as const,
-  },
+  // Hidden from UI – set to false to show again
+  { title: "Voice Notes", icon: FileText, key: "voiceNotes" as const, hidden: true },
 ]
 
 export function Dashboard() {
@@ -60,7 +58,7 @@ export function Dashboard() {
       )}
 
       <div className="grid gap-4 md:grid-cols-3">
-        {statConfig.map((stat) => {
+        {statConfig.filter((stat) => !("hidden" in stat && stat.hidden)).map((stat) => {
           const Icon = stat.icon
           const value = stats ? stats[stat.key].toLocaleString() : "-"
           
@@ -73,8 +71,12 @@ export function Dashboard() {
                 <Icon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${isLoading ? "opacity-50" : ""}`}>
-                  {value}
+                <div className="text-2xl font-bold min-h-[2rem] flex items-center">
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-24" />
+                  ) : (
+                    value
+                  )}
                 </div>
               </CardContent>
             </Card>

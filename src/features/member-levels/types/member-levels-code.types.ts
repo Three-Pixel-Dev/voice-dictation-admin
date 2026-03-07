@@ -19,6 +19,9 @@ export interface MemberLevelCodeRequest {
   userId: number
 }
 
+/** Payload for update; omit userId so activated user is not changed */
+export type MemberLevelCodeUpdateRequest = Omit<MemberLevelCodeRequest, "userId">
+
 export interface MemberLevelCodeFilter {
   code?: string
   memberLevelId?: number

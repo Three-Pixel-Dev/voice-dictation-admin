@@ -21,9 +21,12 @@ export function SignIn() {
     try {
       const response = await authService.login({ email, password })
       authService.setToken(response.token)
-      authService.setUser({ email: response.email, userId: response.userId })
+      authService.setUser({
+        email: response.email,
+        userId: response.userId,
+        role: response.role,
+      })
       toast.success("Login successful!")
-      // Use window.location for full page reload to update auth state
       window.location.href = "/dashboard"
     } catch (error: any) {
       toast.error(error.message || "Login failed. Please check your credentials.")

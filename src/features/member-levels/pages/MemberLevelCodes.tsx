@@ -120,7 +120,6 @@ export function MemberLevelCodes() {
       activatedAt: code.activatedAt || "",
       expiredAt: code.expiredAt || "",
       memberLevelId: code.memberLevelId,
-      userId: 1, // This will need to be updated based on current user context
     })
     setIsEditDialogOpen(true)
   }
@@ -129,7 +128,13 @@ export function MemberLevelCodes() {
     if (!editingCode || !editFormData) return
     try {
       setIsUpdating(true)
-      await memberLevelsCodeService.update(editingCode.id, editFormData as MemberLevelCodeRequest)
+      const updatePayload: Parameters<typeof memberLevelsCodeService.update>[1] = {
+        code: editFormData.code ?? editingCode.code,
+        activatedAt: editFormData.activatedAt,
+        expiredAt: editFormData.expiredAt,
+        memberLevelId: editFormData.memberLevelId ?? editingCode.memberLevelId,
+      }
+      await memberLevelsCodeService.update(editingCode.id, updatePayload)
       toast.success("Member level code updated successfully")
       setIsEditDialogOpen(false)
       setEditingCode(null)
