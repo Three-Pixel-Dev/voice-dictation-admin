@@ -1,6 +1,6 @@
 // const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://duolinkmm.com"
-// const API_BASE_URL = "https://api.expn-ai.com"
-const API_BASE_URL = "http://localhost:8080";
+export const API_BASE_URL = "https://api.expn-ai.com"
+// export const API_BASE_URL = "http://localhost:8080";
 
 export class ApiError extends Error {
   constructor(
@@ -27,15 +27,44 @@ function getAuthHeaders(): Record<string, string> {
   return headers
 }
 
+function clearAuthAndRedirect() {
+  localStorage.removeItem("token")
+  localStorage.removeItem("refreshToken")
+  localStorage.removeItem("user")
+  window.dispatchEvent(new Event("auth-logout"))
+  window.location.href = "/signin"
+}
+
+/**
+ * Try to refresh the access token using the stored refresh token.
+ * Returns true if a new token was stored, false otherwise.
+ */
+async function tryRefreshToken(): Promise<boolean> {
+  const refreshToken = localStorage.getItem("refreshToken")
+  if (!refreshToken) return false
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    })
+    if (!response.ok) return false
+    const json = await response.json().catch(() => null)
+    const data = json?.data ?? json
+    const newToken = data?.token
+    if (!newToken) return false
+    localStorage.setItem("token", newToken)
+    if (data?.refreshToken != null) {
+      localStorage.setItem("refreshToken", data.refreshToken)
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    // Handle 401 Unauthorized - token expired or invalid
-    if (response.status === 401) {
-      localStorage.removeItem("token")
-      localStorage.removeItem("user")
-      window.location.href = "/signin"
-    }
-    
     const errorData = await response.json().catch(() => ({}))
     throw new ApiError(
       response.status,
@@ -65,13 +94,35 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return JSON.parse(text)
 }
 
+async function requestWithAuthRetry<T>(
+  doRequest: () => Promise<Response>
+): Promise<T> {
+  let response = await doRequest()
+  if (response.status === 401) {
+    const refreshed = await tryRefreshToken()
+    if (refreshed) response = await doRequest()
+    if (response.status === 401) {
+      clearAuthAndRedirect()
+      const errorData = await response.json().catch(() => ({}))
+      throw new ApiError(
+        401,
+        errorData.code ?? 401,
+        errorData.message || "Unauthorized",
+        errorData.data
+      )
+    }
+  }
+  return handleResponse<T>(response)
+}
+
 export const apiClient = {
   async get<T>(url: string): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    })
-    return handleResponse<T>(response)
+    return requestWithAuthRetry<T>(() =>
+      fetch(`${API_BASE_URL}${url}`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      })
+    )
   },
 
   async post<T>(url: string, data?: any): Promise<T> {
@@ -89,37 +140,41 @@ export const apiClient = {
       headers["Authorization"] = `Bearer ${token}`
     }
     
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      method: "POST",
-      headers,
-      body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
-    })
-    return handleResponse<T>(response)
+    return requestWithAuthRetry<T>(() =>
+      fetch(`${API_BASE_URL}${url}`, {
+        method: "POST",
+        headers,
+        body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
+      })
+    )
   },
 
   async put<T>(url: string, data?: any): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: data ? JSON.stringify(data) : undefined,
-    })
-    return handleResponse<T>(response)
+    return requestWithAuthRetry<T>(() =>
+      fetch(`${API_BASE_URL}${url}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: data ? JSON.stringify(data) : undefined,
+      })
+    )
   },
 
   async delete<T>(url: string): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    })
-    return handleResponse<T>(response)
+    return requestWithAuthRetry<T>(() =>
+      fetch(`${API_BASE_URL}${url}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      })
+    )
   },
 
   async patch<T>(url: string, data?: any): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      method: "PATCH",
-      headers: getAuthHeaders(),
-      body: data ? JSON.stringify(data) : undefined,
-    })
-    return handleResponse<T>(response)
+    return requestWithAuthRetry<T>(() =>
+      fetch(`${API_BASE_URL}${url}`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: data ? JSON.stringify(data) : undefined,
+      })
+    )
   },
 }

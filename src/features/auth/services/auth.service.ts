@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api-client"
+import { apiClient, API_BASE_URL } from "@/lib/api-client"
 import type { ApiResponse } from "@/types/api"
 
 export interface LoginRequest {
@@ -8,6 +8,7 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   token: string
+  refreshToken?: string
   email: string
   userId: number
   role?: string
@@ -37,6 +38,7 @@ export const authService = {
 
   logout(): void {
     localStorage.removeItem("token")
+    localStorage.removeItem("refreshToken")
     localStorage.removeItem("user")
     window.dispatchEvent(new Event("auth-logout"))
   },
@@ -47,6 +49,14 @@ export const authService = {
 
   setToken(token: string): void {
     localStorage.setItem("token", token)
+  },
+
+  getRefreshToken(): string | null {
+    return localStorage.getItem("refreshToken")
+  },
+
+  setRefreshToken(refreshToken: string): void {
+    localStorage.setItem("refreshToken", refreshToken)
   },
 
   getUser(): StoredUser | null {
@@ -75,5 +85,35 @@ export const authService = {
 
   setLogoutCallback(callback: (() => void) | null): void {
     logoutCallback = callback
+  },
+
+  /**
+   * Check if the current token is still valid by calling a protected endpoint.
+   * Returns true if the session is valid, false if token is missing/expired/invalid.
+   * Clears storage on 401 so the app can show sign-in.
+   */
+  async validateSession(): Promise<boolean> {
+    const user = this.getUser()
+    const token = this.getToken()
+    if (!token || !user?.userId) return false
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/profiles/users/${user.userId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+      if (response.status === 401) {
+        this.logout()
+        return false
+      }
+      return response.ok
+    } catch {
+      return false
+    }
   },
 }

@@ -9,8 +9,13 @@ const SidebarContext = createContext<SidebarContextType | undefined>(undefined)
 
 const SIDEBAR_STORAGE_KEY = "voice-dictation-sidebar-state"
 
+const MOBILE_BREAKPOINT = 768
+
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(() => {
+    if (typeof window === "undefined") return true
+    const isMobile = window.innerWidth < MOBILE_BREAKPOINT
+    if (isMobile) return false
     const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
     return stored !== null ? stored === "true" : true
   })

@@ -21,6 +21,9 @@ export function SignIn() {
     try {
       const response = await authService.login({ email, password })
       authService.setToken(response.token)
+      if (response.refreshToken) {
+        authService.setRefreshToken(response.refreshToken)
+      }
       authService.setUser({
         email: response.email,
         userId: response.userId,
