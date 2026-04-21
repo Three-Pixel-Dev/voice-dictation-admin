@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Search, MoreVertical, Loader2, Trash2, Plus, Eye, EyeOff } from "lucide-react"
+import { Search, MoreVertical, Loader2, Trash2, Plus, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,13 +55,18 @@ export function Users() {
   const [size] = useState(10)
   const [searchQuery, setSearchQuery] = useState("")
   const debouncedSearchQuery = useDebounce(searchQuery, 500)
+
+  const emailFilter = useMemo(() => {
+    const q = debouncedSearchQuery?.trim()
+    return q ? { email: q } : undefined
+  }, [debouncedSearchQuery])
   
   const { data, loading, error, refetch } = useUsers({ 
     page, 
     size,
     sortBy: "id",
     sortDirection: "DESC",
-    filter: debouncedSearchQuery ? { email: debouncedSearchQuery } : undefined
+    filter: emailFilter
   })
   const { delete: deleteUser, loading: deleting } = useDeleteUser()
   const { create: createUserWithLoginCode, loading: creatingUser } = useCreateUserWithLoginCode()
@@ -79,6 +84,17 @@ export function Users() {
     loginCode: "",
     memberLevelId: "",
   })
+
+  useEffect(() => {
+    // When searching, jump back to the first page so results show immediately.
+    setPage(0)
+  }, [debouncedSearchQuery])
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 0 && data && newPage < data.totalPages) {
+      setPage(newPage)
+    }
+  }
 
   const handleDelete = async () => {
     if (!deletingUser) return
@@ -239,6 +255,35 @@ export function Users() {
                 )}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination */}
+          {data && data.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                Page {page + 1} of {data.totalPages} ({data.totalItems} total users)
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 0 || loading}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page >= data.totalPages - 1 || loading}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
