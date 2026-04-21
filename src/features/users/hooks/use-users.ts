@@ -30,6 +30,10 @@ export function useUsers(options: UseUsersOptions = {}) {
     autoFetch = true,
   } = options
 
+  // Prevent refetch loops when callers pass a new object each render.
+  // (Example: `filter: { email: debounced }` without memoization.)
+  const filterKey = JSON.stringify(filter ?? {})
+
   const [data, setData] = useState<PaginationDTO<User> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
@@ -59,7 +63,7 @@ export function useUsers(options: UseUsersOptions = {}) {
       fetchUsers()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, size, sortBy, sortDirection, filter, autoFetch])
+  }, [page, size, sortBy, sortDirection, filterKey, autoFetch])
 
   return {
     data,
