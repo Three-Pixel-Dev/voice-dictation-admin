@@ -8,6 +8,7 @@ import type {
   User,
   UserRequest,
   UserFilter,
+  CreateUserWithLoginCodeRequest,
 } from "../types/users.types"
 
 interface UseUsersOptions {
@@ -28,6 +29,10 @@ export function useUsers(options: UseUsersOptions = {}) {
     filter,
     autoFetch = true,
   } = options
+
+  // Prevent refetch loops when callers pass a new object each render.
+  // (Example: `filter: { email: debounced }` without memoization.)
+  const filterKey = JSON.stringify(filter ?? {})
 
   const [data, setData] = useState<PaginationDTO<User> | null>(null)
   const [loading, setLoading] = useState(false)
@@ -58,7 +63,7 @@ export function useUsers(options: UseUsersOptions = {}) {
       fetchUsers()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, size, sortBy, sortDirection, filter, autoFetch])
+  }, [page, size, sortBy, sortDirection, filterKey, autoFetch])
 
   return {
     data,
@@ -174,6 +179,32 @@ export function useDeleteUser() {
 
   return {
     delete: deleteUser,
+    loading,
+    error,
+  }
+}
+
+export function useCreateUserWithLoginCode() {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  const create = async (data: CreateUserWithLoginCodeRequest) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await usersService.createWithLoginCode(data)
+      return result
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Failed to create user with login code")
+      setError(error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return {
+    create,
     loading,
     error,
   }

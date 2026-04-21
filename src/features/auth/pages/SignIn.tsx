@@ -4,16 +4,37 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { authService } from "../services/auth.service"
+import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 
 export function SignIn() {
   const navigate = useNavigate()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement authentication
-    navigate("/dashboard")
+    setLoading(true)
+
+    try {
+      const response = await authService.login({ email, password })
+      authService.setToken(response.token)
+      if (response.refreshToken) {
+        authService.setRefreshToken(response.refreshToken)
+      }
+      authService.setUser({
+        email: response.email,
+        userId: response.userId,
+        role: response.role,
+      })
+      toast.success("Login successful!")
+      window.location.href = "/dashboard"
+    } catch (error: any) {
+      toast.error(error.message || "Login failed. Please check your credentials.")
+      setLoading(false)
+    }
   }
 
   return (
@@ -49,8 +70,15 @@ export function SignIn() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full">
-              Sign In
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </Button>
           </form>
         </CardContent>

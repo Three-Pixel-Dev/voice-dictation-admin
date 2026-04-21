@@ -8,6 +8,7 @@ import type {
   User,
   UserRequest,
   UserFilter,
+  CreateUserWithLoginCodeRequest,
 } from "../types/users.types"
 
 const BASE_URL = "/api/users"
@@ -62,5 +63,18 @@ export const usersService = {
    */
   async delete(id: number): Promise<void> {
     await apiClient.delete<ApiResponse<void>>(`${BASE_URL}/${id}`)
+  },
+
+  /**
+   * Create a user with login code
+   */
+  async createWithLoginCode(
+    data: CreateUserWithLoginCodeRequest
+  ): Promise<User> {
+    const response = await apiClient.post<ApiResponse<User>>(
+      `${BASE_URL}/with-login-code`,
+      data
+    )
+    return response.data
   },
 }
