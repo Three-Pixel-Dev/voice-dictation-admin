@@ -9,6 +9,7 @@ import type {
   UserRequest,
   UserFilter,
   CreateUserWithLoginCodeRequest,
+  CreateBulkUsersWithLoginCodeRequest,
 } from "../types/users.types"
 
 const BASE_URL = "/api/users"
@@ -73,6 +74,19 @@ export const usersService = {
   ): Promise<User> {
     const response = await apiClient.post<ApiResponse<User>>(
       `${BASE_URL}/with-login-code`,
+      data
+    )
+    return response.data
+  },
+
+  /**
+   * Create bulk users with login codes
+   */
+  async createBulkWithLoginCode(
+    data: CreateBulkUsersWithLoginCodeRequest
+  ): Promise<User[]> {
+    const response = await apiClient.post<ApiResponse<User[]>>(
+      `${BASE_URL}/with-login-code/bulk`,
       data
     )
     return response.data

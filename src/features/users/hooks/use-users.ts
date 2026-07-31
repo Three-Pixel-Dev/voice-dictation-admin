@@ -9,6 +9,7 @@ import type {
   UserRequest,
   UserFilter,
   CreateUserWithLoginCodeRequest,
+  CreateBulkUsersWithLoginCodeRequest,
 } from "../types/users.types"
 
 interface UseUsersOptions {
@@ -205,6 +206,32 @@ export function useCreateUserWithLoginCode() {
 
   return {
     create,
+    loading,
+    error,
+  }
+}
+
+export function useCreateBulkUsersWithLoginCode() {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  const createBulk = async (data: CreateBulkUsersWithLoginCodeRequest) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await usersService.createBulkWithLoginCode(data)
+      return result
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Failed to create bulk users with login codes")
+      setError(error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return {
+    createBulk,
     loading,
     error,
   }

@@ -32,3 +32,10 @@ export interface CreateUserWithLoginCodeRequest {
   loginCode: string
   memberLevelId: number
 }
+
+export interface CreateBulkUsersWithLoginCodeRequest {
+  quantity?: number
+  prefix?: string
+  customCodes?: string[]
+  memberLevelId: number
+}

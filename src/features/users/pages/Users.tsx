@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Search, MoreVertical, Loader2, Trash2, Plus, Eye, EyeOff, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, MoreVertical, Loader2, Trash2, Plus, Eye, EyeOff, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +44,9 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useUsers, useDeleteUser, useCreateUserWithLoginCode, useUser } from "../hooks/use-users"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
+import { useUsers, useDeleteUser, useCreateUserWithLoginCode, useCreateBulkUsersWithLoginCode, useUser } from "../hooks/use-users"
 import { useMemberLevels } from "@/features/member-levels/hooks/use-member-levels"
 import type { User } from "../types/users.types"
 import { useDebounce } from "@/lib/use-debounce"
@@ -70,6 +72,7 @@ export function Users() {
   })
   const { delete: deleteUser, loading: deleting } = useDeleteUser()
   const { create: createUserWithLoginCode, loading: creatingUser } = useCreateUserWithLoginCode()
+  const { createBulk: createBulkUsersWithLoginCode, loading: creatingBulkUsers } = useCreateBulkUsersWithLoginCode()
   const { data: memberLevelsData } = useMemberLevels({ 
     page: 0, 
     size: 100,
@@ -80,10 +83,20 @@ export function Users() {
   const { data: viewingUser, loading: loadingUserDetails } = useUser(viewingUserId)
   const [showLoginCode, setShowLoginCode] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [createMode, setCreateMode] = useState<"single" | "bulk">("single")
+  const [bulkGenerationMode, setBulkGenerationMode] = useState<"auto" | "custom">("auto")
   const [formData, setFormData] = useState({
     loginCode: "",
     memberLevelId: "",
   })
+  const [bulkFormData, setBulkFormData] = useState({
+    quantity: 5,
+    prefix: "",
+    memberLevelId: "",
+    customCodesText: "",
+  })
+  const [createdBulkUsers, setCreatedBulkUsers] = useState<User[] | null>(null)
+  const [isCopied, setIsCopied] = useState(false)
 
   useEffect(() => {
     // When searching, jump back to the first page so results show immediately.
@@ -115,17 +128,88 @@ export function Users() {
     }
 
     try {
-      await createUserWithLoginCode({
+      const user = await createUserWithLoginCode({
         loginCode: formData.loginCode.trim(),
         memberLevelId: parseInt(formData.memberLevelId),
       })
       toast.success("User created successfully with login code")
       setIsCreateDialogOpen(false)
       setFormData({ loginCode: "", memberLevelId: "" })
+      setCreatedBulkUsers([user])
       refetch()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create user with login code")
     }
+  }
+
+  const [copiedCodeIndex, setCopiedCodeIndex] = useState<number | null>(null)
+
+  const handleCopySingleCode = (code: string, index: number) => {
+    navigator.clipboard.writeText(code)
+    setCopiedCodeIndex(index)
+    toast.success(`Copied code: ${code}`)
+    setTimeout(() => setCopiedCodeIndex(null), 2000)
+  }
+
+  const handleCreateBulkUsersWithLoginCode = async () => {
+    if (!bulkFormData.memberLevelId) {
+      toast.error("Please select a member level")
+      return
+    }
+
+    let customCodes: string[] | undefined = undefined
+    let quantity: number | undefined = undefined
+
+    if (bulkGenerationMode === "custom") {
+      const lines = bulkFormData.customCodesText
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean)
+      if (lines.length === 0) {
+        toast.error("Please enter at least one custom code")
+        return
+      }
+      if (lines.length > 10) {
+        toast.error("Quantity limit exceeded: maximum 10 codes per request")
+        return
+      }
+      customCodes = lines
+    } else {
+      const q = Number(bulkFormData.quantity)
+      if (isNaN(q) || q < 1 || q > 10) {
+        toast.error("Quantity must be between 1 and 10")
+        return
+      }
+      quantity = q
+    }
+
+    try {
+      const users = await createBulkUsersWithLoginCode({
+        quantity,
+        prefix: bulkFormData.prefix.trim() || undefined,
+        customCodes,
+        memberLevelId: parseInt(bulkFormData.memberLevelId),
+      })
+      toast.success(`Successfully created ${users.length} user(s) with login codes`)
+      setIsCreateDialogOpen(false)
+      setBulkFormData({ quantity: 5, prefix: "", memberLevelId: "", customCodesText: "" })
+      setCreatedBulkUsers(users)
+      refetch()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create bulk users")
+    }
+  }
+
+  const handleCopyBulkCodes = () => {
+    if (!createdBulkUsers || createdBulkUsers.length === 0) return
+    const codes = createdBulkUsers
+      .map((u) => u.loginCode)
+      .filter(Boolean)
+      .join("\n")
+    navigator.clipboard.writeText(codes)
+    setIsCopied(true)
+    toast.success("All login codes copied to clipboard!")
+    setTimeout(() => setIsCopied(false), 2000)
   }
 
   const formatDate = (dateString?: string) => {
@@ -383,55 +467,215 @@ export function Users() {
 
       {/* Create User with Login Code Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Create User with Login Code</DialogTitle>
+            <DialogTitle>Create User(s) with Login Code</DialogTitle>
             <DialogDescription>
-              Create a new user with a login code. The user will be created with a random name and email format: codeuser01@gmail.com
+              Create single or bulk users with login codes (1 to 10 max).
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="loginCode">Login Code</Label>
-              <Input
-                id="loginCode"
-                placeholder="Enter login code"
-                value={formData.loginCode}
-                onChange={(e) => setFormData({ ...formData, loginCode: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="memberLevelId">Member Level</Label>
-              <Select
-                value={formData.memberLevelId}
-                onValueChange={(value) => setFormData({ ...formData, memberLevelId: value })}
-              >
-                <SelectTrigger id="memberLevelId">
-                  <SelectValue placeholder="Select member level" />
-                </SelectTrigger>
-                <SelectContent>
-                  {memberLevelsData?.content?.map((level) => (
-                    <SelectItem key={level.id} value={level.id.toString()}>
-                      {level.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+
+          <Tabs value={createMode} onValueChange={(val) => setCreateMode(val as "single" | "bulk")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="single">Single Code</TabsTrigger>
+              <TabsTrigger value="bulk">Bulk Generation (1-10)</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="single" className="space-y-4 py-2">
+              <div className="grid gap-2">
+                <Label htmlFor="loginCode">Login Code</Label>
+                <Input
+                  id="loginCode"
+                  placeholder="Enter login code"
+                  value={formData.loginCode}
+                  onChange={(e) => setFormData({ ...formData, loginCode: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="memberLevelId">Member Level</Label>
+                <Select
+                  value={formData.memberLevelId}
+                  onValueChange={(value) => setFormData({ ...formData, memberLevelId: value })}
+                >
+                  <SelectTrigger id="memberLevelId">
+                    <SelectValue placeholder="Select member level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {memberLevelsData?.content?.map((level) => (
+                      <SelectItem key={level.id} value={level.id.toString()}>
+                        {level.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="bulk" className="space-y-4 py-2">
+              <div className="grid gap-2">
+                <Label htmlFor="bulkMemberLevelId">Member Level</Label>
+                <Select
+                  value={bulkFormData.memberLevelId}
+                  onValueChange={(value) => setBulkFormData({ ...bulkFormData, memberLevelId: value })}
+                >
+                  <SelectTrigger id="bulkMemberLevelId">
+                    <SelectValue placeholder="Select member level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {memberLevelsData?.content?.map((level) => (
+                      <SelectItem key={level.id} value={level.id.toString()}>
+                        {level.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-2 text-sm font-medium">
+                <Button
+                  type="button"
+                  variant={bulkGenerationMode === "auto" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setBulkGenerationMode("auto")}
+                  className="flex-1"
+                >
+                  Auto-Generate Random
+                </Button>
+                <Button
+                  type="button"
+                  variant={bulkGenerationMode === "custom" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setBulkGenerationMode("custom")}
+                  className="flex-1"
+                >
+                  Custom List
+                </Button>
+              </div>
+
+              {bulkGenerationMode === "auto" ? (
+                <>
+                  <div className="grid gap-2">
+                    <Label htmlFor="quantity">Quantity (1 to 10)</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={bulkFormData.quantity}
+                      onChange={(e) => {
+                        const val = Math.min(10, Math.max(1, parseInt(e.target.value) || 1))
+                        setBulkFormData({ ...bulkFormData, quantity: val })
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">Limit: Maximum 10 codes per request.</p>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="prefix">Code Prefix (Optional)</Label>
+                    <Input
+                      id="prefix"
+                      placeholder="e.g. VIP- or PROMO-"
+                      value={bulkFormData.prefix}
+                      onChange={(e) => setBulkFormData({ ...bulkFormData, prefix: e.target.value })}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="grid gap-2">
+                  <Label htmlFor="customCodes">Paste Custom Codes (1 per line, max 10)</Label>
+                  <Textarea
+                    id="customCodes"
+                    rows={4}
+                    placeholder={`VIP1001\nVIP1002\nVIP1003`}
+                    value={bulkFormData.customCodesText}
+                    onChange={(e) => setBulkFormData({ ...bulkFormData, customCodesText: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">Enter up to 10 unique codes.</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
                 setIsCreateDialogOpen(false)
                 setFormData({ loginCode: "", memberLevelId: "" })
+                setBulkFormData({ quantity: 5, prefix: "", memberLevelId: "", customCodesText: "" })
               }}
             >
               Cancel
             </Button>
-            <Button onClick={handleCreateUserWithLoginCode} disabled={creatingUser}>
-              {creatingUser && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create User
+            {createMode === "single" ? (
+              <Button onClick={handleCreateUserWithLoginCode} disabled={creatingUser}>
+                {creatingUser && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create User
+              </Button>
+            ) : (
+              <Button onClick={handleCreateBulkUsersWithLoginCode} disabled={creatingBulkUsers}>
+                {creatingBulkUsers && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Generate Bulk Users
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generated Login Codes Results Dialog */}
+      <Dialog open={!!createdBulkUsers} onOpenChange={(open) => !open && setCreatedBulkUsers(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {createdBulkUsers?.length === 1 ? "Generated Login Code" : `Generated Login Codes (${createdBulkUsers?.length})`}
+            </DialogTitle>
+            <DialogDescription>
+              The following login code(s) have been generated successfully. You can copy them or take a screenshot.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1 my-2">
+            {createdBulkUsers?.map((user, idx) => (
+              <div
+                key={user.id}
+                className="flex items-center justify-between p-3 rounded-lg border bg-muted/40 hover:bg-muted/70 transition-colors"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-mono text-base font-bold tracking-wider text-foreground">
+                    {user.loginCode}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{user.email}</span>
+                </div>
+                {user.loginCode && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => handleCopySingleCode(user.loginCode!, idx)}
+                  >
+                    {copiedCodeIndex === idx ? (
+                      <Check className="h-4 w-4 text-green-600 mr-1" />
+                    ) : (
+                      <Copy className="h-4 w-4 text-muted-foreground mr-1" />
+                    )}
+                    {copiedCodeIndex === idx ? "Copied" : "Copy"}
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="flex sm:justify-between items-center gap-2 pt-2">
+            {createdBulkUsers && createdBulkUsers.length > 1 ? (
+              <Button variant="outline" onClick={handleCopyBulkCodes}>
+                {isCopied ? <Check className="mr-2 h-4 w-4 text-green-600" /> : <Copy className="mr-2 h-4 w-4" />}
+                {isCopied ? "All Copied!" : "Copy All Codes"}
+              </Button>
+            ) : (
+              <div />
+            )}
+            <Button onClick={() => setCreatedBulkUsers(null)}>
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>
