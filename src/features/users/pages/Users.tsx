@@ -44,9 +44,10 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { useUsers, useDeleteUser, useCreateUserWithLoginCode, useCreateBulkUsersWithLoginCode, useUser } from "../hooks/use-users"
+import { useUsers, useDeleteUser, useCreateUserWithLoginCode, useCreateBulkUsersWithLoginCode, useUser, useUserActivationHistory } from "../hooks/use-users"
 import { useMemberLevels } from "@/features/member-levels/hooks/use-member-levels"
 import type { User } from "../types/users.types"
 import { useDebounce } from "@/lib/use-debounce"
@@ -81,6 +82,7 @@ export function Users() {
   const [deletingUser, setDeletingUser] = useState<User | null>(null)
   const [viewingUserId, setViewingUserId] = useState<number | null>(null)
   const { data: viewingUser, loading: loadingUserDetails } = useUser(viewingUserId)
+  const { data: activationHistory, loading: loadingActivationHistory } = useUserActivationHistory(viewingUserId)
   const [showLoginCode, setShowLoginCode] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [createMode, setCreateMode] = useState<"single" | "bulk">("single")
@@ -451,6 +453,53 @@ export function Users() {
                   </div>
                 </div>
               )}
+
+              {/* Code Activation History Section */}
+              <div className="grid gap-2 pt-2 border-t mt-2">
+                <Label className="text-base font-semibold">Code Activation History</Label>
+                {loadingActivationHistory ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : activationHistory && activationHistory.length > 0 ? (
+                  <div className="border rounded-md overflow-hidden max-h-56 overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Code</TableHead>
+                          <TableHead>Plan</TableHead>
+                          <TableHead>Activated At</TableHead>
+                          <TableHead>Expired At</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {activationHistory.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-mono font-medium">{item.code}</TableCell>
+                            <TableCell>{item.memberLevelName}</TableCell>
+                            <TableCell>{formatDate(item.activatedAt)}</TableCell>
+                            <TableCell>{formatDate(item.expiredAt)}</TableCell>
+                            <TableCell>
+                              {item.status === "ACTIVE" ? (
+                                <Badge className="bg-emerald-600 hover:bg-emerald-700">Active</Badge>
+                              ) : item.status === "EXPIRED" ? (
+                                <Badge variant="secondary">Expired</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-amber-600 border-amber-500">Pending</Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground py-3 border rounded-md px-3 bg-muted/20 text-center">
+                    No code activation history found for this user.
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="py-8 text-center text-muted-foreground">

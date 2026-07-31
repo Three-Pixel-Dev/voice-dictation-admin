@@ -10,6 +10,7 @@ import type {
   UserFilter,
   CreateUserWithLoginCodeRequest,
   CreateBulkUsersWithLoginCodeRequest,
+  UserActivationHistory,
 } from "../types/users.types"
 
 interface UseUsersOptions {
@@ -232,6 +233,44 @@ export function useCreateBulkUsersWithLoginCode() {
 
   return {
     createBulk,
+    loading,
+    error,
+  }
+}
+
+export function useUserActivationHistory(userId: number | null) {
+  const [data, setData] = useState<UserActivationHistory[] | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    if (!userId) {
+      setData(null)
+      return
+    }
+
+    const fetchHistory = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const result = await usersService.getActivationHistory(userId)
+        setData(result)
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err
+            : new Error("Failed to fetch user activation history")
+        )
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchHistory()
+  }, [userId])
+
+  return {
+    data,
     loading,
     error,
   }
