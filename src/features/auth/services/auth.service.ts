@@ -1,4 +1,4 @@
-import { apiClient, API_BASE_URL } from "@/lib/api-client"
+import { apiClient, API_BASE_URL, getAuthHeaders } from "@/lib/api-client"
 import type { ApiResponse } from "@/types/api"
 
 export interface LoginRequest {
@@ -101,10 +101,7 @@ export const authService = {
         `${API_BASE_URL}/api/profiles/users/${user.userId}`,
         {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getAuthHeaders(),
         }
       )
       if (response.status === 401) {

@@ -14,10 +14,14 @@ export class ApiError extends Error {
   }
 }
 
-function getAuthHeaders(): Record<string, string> {
+export const API_CLIENT_VERSION = "v3"
+export const API_VERSION_HEADER = "X-Api-Version"
+
+export function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("token")
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    [API_VERSION_HEADER]: API_CLIENT_VERSION,
   }
   
   if (token) {
@@ -45,7 +49,10 @@ async function tryRefreshToken(): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        [API_VERSION_HEADER]: API_CLIENT_VERSION,
+      },
       body: JSON.stringify({ refreshToken }),
     })
     if (!response.ok) return false
@@ -132,7 +139,7 @@ export const apiClient = {
     // For FormData, we need to manually set Authorization header
     // The browser will set Content-Type with boundary automatically
     const headers: Record<string, string> = isFormData
-      ? {} // Let browser set Content-Type with boundary for FormData
+      ? { [API_VERSION_HEADER]: API_CLIENT_VERSION } // Let browser set Content-Type with boundary for FormData
       : getAuthHeaders()
     
     // Add Authorization header for FormData requests

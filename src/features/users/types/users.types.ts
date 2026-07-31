@@ -32,3 +32,22 @@ export interface CreateUserWithLoginCodeRequest {
   loginCode: string
   memberLevelId: number
 }
+
+export interface CreateBulkUsersWithLoginCodeRequest {
+  quantity?: number
+  prefix?: string
+  customCodes?: string[]
+  memberLevelId: number
+}
+
+export interface UserActivationHistory {
+  id: number
+  code: string
+  memberLevelName: string
+  amount?: number
+  currencyName?: string
+  maxJob?: number
+  activatedAt?: string
+  expiredAt?: string
+  status: "ACTIVE" | "EXPIRED" | "PENDING"
+}
