@@ -7,6 +7,8 @@ import { MainLayout } from "@/components/layout/MainLayout"
 import { SignIn } from "@/features/auth/pages/SignIn"
 import { Unauthorized } from "@/features/auth/pages/Unauthorized"
 import { Dashboard } from "@/features/dashboard/pages/Dashboard"
+import { BlogList } from "@/features/blogs/pages/BlogList"
+import { BlogEditor } from "@/features/blogs/pages/BlogEditor"
 import { VoiceNotes } from "@/features/voice-notes/pages/VoiceNotes"
 import { VoiceNoteDetail } from "@/features/voice-notes/pages/VoiceNoteDetail"
 import { MemberLevels } from "@/features/member-levels/pages/MemberLevels"
@@ -104,6 +106,48 @@ function App() {
                 : (
               <MainLayout>
                 <Dashboard />
+              </MainLayout>
+            )
+          }
+        />
+        <Route
+          path="/blogs"
+          element={
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
+              <MainLayout>
+                <BlogList />
+              </MainLayout>
+            )
+          }
+        />
+        <Route
+          path="/blogs/new"
+          element={
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
+              <MainLayout>
+                <BlogEditor />
+              </MainLayout>
+            )
+          }
+        />
+        <Route
+          path="/blogs/edit/:id"
+          element={
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
+              <MainLayout>
+                <BlogEditor />
               </MainLayout>
             )
           }
