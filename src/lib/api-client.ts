@@ -1,6 +1,11 @@
 // const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://duolinkmm.com"
-export const API_BASE_URL = "https://api.expn-ai.com"
+export const API_BASE_URL = "http://localhost:8080"
 // export const API_BASE_URL = "http://localhost:8080";
+
+/** Must match server app.mobile.api-version (MobileApiVersionFilter). */
+export const API_CLIENT_VERSION =
+  process.env.REACT_APP_API_VERSION || process.env.API_VERSION_HEADER || "v3";
+export const API_VERSION_HEADER = "X-Api-Version";
 
 export class ApiError extends Error {
   constructor(
@@ -139,7 +144,7 @@ export const apiClient = {
     // For FormData, we need to manually set Authorization header
     // The browser will set Content-Type with boundary automatically
     const headers: Record<string, string> = isFormData
-      ? { [API_VERSION_HEADER]: API_CLIENT_VERSION } // Let browser set Content-Type with boundary for FormData
+      ? { [API_VERSION_HEADER]: API_CLIENT_VERSION }
       : getAuthHeaders()
     
     // Add Authorization header for FormData requests
