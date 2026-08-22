@@ -7,6 +7,9 @@ import { MainLayout } from "@/components/layout/MainLayout"
 import { SignIn } from "@/features/auth/pages/SignIn"
 import { Unauthorized } from "@/features/auth/pages/Unauthorized"
 import { Dashboard } from "@/features/dashboard/pages/Dashboard"
+import { RemindersList } from "@/features/reminders/pages/RemindersList"
+import { ReminderEditor } from "@/features/reminders/pages/ReminderEditor"
+import { ReminderReportPage } from "@/features/reminders/pages/ReminderReport"
 import { BlogList } from "@/features/blogs/pages/BlogList"
 import { BlogEditor } from "@/features/blogs/pages/BlogEditor"
 import { VoiceNotes } from "@/features/voice-notes/pages/VoiceNotes"
@@ -106,6 +109,62 @@ function App() {
                 : (
               <MainLayout>
                 <Dashboard />
+              </MainLayout>
+            )
+          }
+        />
+        <Route
+          path="/reminders"
+          element={
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
+              <MainLayout>
+                <RemindersList />
+              </MainLayout>
+            )
+          }
+        />
+        <Route
+          path="/reminders/new"
+          element={
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
+              <MainLayout>
+                <ReminderEditor />
+              </MainLayout>
+            )
+          }
+        />
+        <Route
+          path="/reminders/:id/edit"
+          element={
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
+              <MainLayout>
+                <ReminderEditor />
+              </MainLayout>
+            )
+          }
+        />
+        <Route
+          path="/reminders/:id/report"
+          element={
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
+              <MainLayout>
+                <ReminderReportPage />
               </MainLayout>
             )
           }
