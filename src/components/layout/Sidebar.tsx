@@ -12,6 +12,7 @@ import {
   Mic,
   Key,
   BookOpen,
+  Bell,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -31,6 +32,11 @@ const menuItems = [
     title: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard",
+  },
+  {
+    title: "Push Notifications",
+    icon: Bell,
+    href: "/reminders",
   },
   {
     title: "Blog Posts",
