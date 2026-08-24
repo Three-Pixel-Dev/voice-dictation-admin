@@ -7,6 +7,8 @@ import { MainLayout } from "@/components/layout/MainLayout"
 import { SignIn } from "@/features/auth/pages/SignIn"
 import { Unauthorized } from "@/features/auth/pages/Unauthorized"
 import { Dashboard } from "@/features/dashboard/pages/Dashboard"
+import { AnnouncementsList } from "@/features/announcements/pages/AnnouncementsList"
+import { AnnouncementEditor } from "@/features/announcements/pages/AnnouncementEditor"
 import { RemindersList } from "@/features/reminders/pages/RemindersList"
 import { ReminderEditor } from "@/features/reminders/pages/ReminderEditor"
 import { ReminderReportPage } from "@/features/reminders/pages/ReminderReport"
@@ -109,6 +111,48 @@ function App() {
                 : (
               <MainLayout>
                 <Dashboard />
+              </MainLayout>
+            )
+          }
+        />
+        <Route
+          path="/announcements"
+          element={
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
+              <MainLayout>
+                <AnnouncementsList />
+              </MainLayout>
+            )
+          }
+        />
+        <Route
+          path="/announcements/new"
+          element={
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
+              <MainLayout>
+                <AnnouncementEditor />
+              </MainLayout>
+            )
+          }
+        />
+        <Route
+          path="/announcements/:id/edit"
+          element={
+            !isAuthenticated
+              ? <Navigate to="/signin" replace />
+              : !isAdmin
+                ? <Unauthorized />
+                : (
+              <MainLayout>
+                <AnnouncementEditor />
               </MainLayout>
             )
           }
