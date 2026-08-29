@@ -54,7 +54,6 @@ export function BlogList() {
   const [totalItems, setTotalItems] = useState(0)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | BlogStatus>('ALL')
-  const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
 
   // Preview & Delete State
   const [previewPost, setPreviewPost] = useState<BlogPost | null>(null)
@@ -76,7 +75,6 @@ export function BlogList() {
       const filterPayload: any = {}
       if (search.trim()) filterPayload.title = search.trim()
       if (statusFilter !== 'ALL') filterPayload.status = statusFilter
-      if (categoryFilter !== 'ALL') filterPayload.category = categoryFilter
 
       const res = await blogService.getAll(page, 10, filterPayload, 'createdAt', 'desc')
       const items = res.content || res.items || []
@@ -89,7 +87,7 @@ export function BlogList() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, statusFilter, categoryFilter])
+  }, [page, search, statusFilter])
 
   useEffect(() => {
     loadStats()
@@ -332,13 +330,6 @@ export function BlogList() {
                         {post.status}
                       </Badge>
 
-                      {post.category && (
-                        <span className="text-xs font-medium text-primary">
-                          {post.category}
-                        </span>
-                      )}
-
-                      <span className="text-xs text-muted-foreground">•</span>
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {post.readTimeMinutes || 3} min read

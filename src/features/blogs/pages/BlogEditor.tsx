@@ -28,16 +28,6 @@ import {
   CheckCircle,
 } from 'lucide-react'
 
-const CATEGORIES = [
-  'Voice AI & Speech Tech',
-  'Productivity & Workflow',
-  'Writing Tips & Guides',
-  'Product Updates',
-  'Mobile Dictation',
-  'Tutorials',
-  'Case Studies',
-]
-
 export function BlogEditor() {
   const { id } = useParams<{ id: string }>()
   const isEdit = Boolean(id && id !== 'new')
@@ -57,7 +47,6 @@ export function BlogEditor() {
   const [coverImageUrl, setCoverImageUrl] = useState('')
   const [coverImageCaption, setCoverImageCaption] = useState('')
   const [status, setStatus] = useState<BlogStatus>('DRAFT')
-  const [category, setCategory] = useState(CATEGORIES[0])
   const [authorName, setAuthorName] = useState('TBYT')
   const [authorEmail, setAuthorEmail] = useState('admin@expn-ai.com')
   const [authorAvatarUrl, setAuthorAvatarUrl] = useState('/app-logo.png')
@@ -81,7 +70,6 @@ export function BlogEditor() {
           setCoverImageUrl(post.coverImageUrl || '')
           setCoverImageCaption(post.coverImageCaption || '')
           setStatus(post.status || 'DRAFT')
-          setCategory(post.category || CATEGORIES[0])
           setAuthorName(post.authorName || 'TBYT')
           setAuthorEmail(post.authorEmail || 'admin@expn-ai.com')
           setAuthorAvatarUrl(post.authorAvatarUrl || '/app-logo.png')
@@ -175,7 +163,6 @@ export function BlogEditor() {
       authorName: authorName.trim() || 'TBYT',
       authorEmail: authorEmail.trim() || 'admin@expn-ai.com',
       authorAvatarUrl: authorAvatarUrl.trim() || '/app-logo.png',
-      category: category.trim() || undefined,
       tags: tags.join(','),
     }
 
@@ -450,25 +437,6 @@ export function BlogEditor() {
                 </div>
               </div>
 
-              {/* Category */}
-              <div className="space-y-1.5">
-                <Label htmlFor="category" className="text-xs font-medium">
-                  Category
-                </Label>
-                <select
-                  id="category"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               {/* Tags */}
               <div className="space-y-1.5">
                 <Label htmlFor="tags" className="text-xs font-medium flex items-center gap-1">
@@ -588,7 +556,6 @@ export function BlogEditor() {
           content,
           coverImageUrl,
           coverImageCaption,
-          category,
           tags: tags.join(','),
           authorName,
           authorAvatarUrl,

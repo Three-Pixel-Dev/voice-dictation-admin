@@ -93,14 +93,8 @@ export function BlogPreviewModal({
                 : 'max-w-[760px] px-8 sm:px-12 py-10'
             }`}
           >
-            {/* Category & Status */}
+            {/* Read time */}
             <div className="flex items-center gap-2 mb-3">
-              {post.category && (
-                <Badge variant="secondary" className="font-medium bg-primary/10 text-primary hover:bg-primary/20">
-                  {post.category}
-                </Badge>
-              )}
-              <span className="text-xs text-muted-foreground">•</span>
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {post.readTimeMinutes || 3} min read
