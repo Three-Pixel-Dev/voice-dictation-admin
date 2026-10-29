@@ -11,6 +11,9 @@ import {
   LogOut,
   Mic,
   Key,
+  BookOpen,
+  Bell,
+  Megaphone,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -30,6 +33,21 @@ const menuItems = [
     title: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard",
+  },
+  {
+    title: "Announcements",
+    icon: Megaphone,
+    href: "/announcements",
+  },
+  {
+    title: "Push Notifications",
+    icon: Bell,
+    href: "/reminders",
+  },
+  {
+    title: "Blog Posts",
+    icon: BookOpen,
+    href: "/blogs",
   },
   // Hidden from UI – remove hidden: true to show again
   { title: "Voice Notes", icon: Mic, href: "/voice-notes", hidden: true },
