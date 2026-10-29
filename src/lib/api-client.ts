@@ -1,10 +1,10 @@
 // const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://duolinkmm.com"
-export const API_BASE_URL = "http://localhost:8080"
+export const API_BASE_URL = "https://api.expn-ai.com/api"
 // export const API_BASE_URL = "http://localhost:8080";
 
 /** Must match server app.mobile.api-version (MobileApiVersionFilter). */
 export const API_CLIENT_VERSION =
-  process.env.REACT_APP_API_VERSION || process.env.API_VERSION_HEADER || "v3";
+  process.env.REACT_APP_API_VERSION || process.env.API_VERSION_HEADER || "v4";
 export const API_VERSION_HEADER = "X-Api-Version";
 
 export class ApiError extends Error {
@@ -19,8 +19,6 @@ export class ApiError extends Error {
   }
 }
 
-export const API_CLIENT_VERSION = "v3"
-export const API_VERSION_HEADER = "X-Api-Version"
 
 export function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("token")
